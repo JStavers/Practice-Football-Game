@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quiz Topic Builder</title>
+  <!-- nav.css must load first — it resets body to flex-row layout -->
+  <link rel="stylesheet" href="css/nav.css" />
+  <link rel="stylesheet" href="css/builder-styles.css" />
+</head>
+<body>
+
+  <!-- ============================================================
+       Shared Sidebar Navigation
+       ============================================================ -->
+
+  <!-- Mobile hamburger button -->
+  <button class="nav-toggle" id="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">
+    <span class="nav-toggle__bar"></span>
+    <span class="nav-toggle__bar"></span>
+    <span class="nav-toggle__bar"></span>
+  </button>
+
+  <!-- Tap-outside overlay (mobile) -->
+  <div class="nav-overlay" id="nav-overlay" aria-hidden="true"></div>
+
+  <nav class="sidebar" aria-label="Site navigation">
+
+    <!-- Brand -->
+    <a class="sidebar__brand" href="index.html">
+      <span class="sidebar__brand-icon">🎮</span>
+      <span>
+        <span class="sidebar__brand-name">Quiz Engine</span><br />
+        <span class="sidebar__brand-tagline">Topic-based quiz system</span>
+      </span>
+    </a>
+
+    <!-- Play -->
+    <div class="nav-section">
+      <span class="nav-section__label">Play</span>
+      <a class="nav-item" href="index.html">
+        <span class="nav-item__icon">🏠</span> Home / Quiz
+      </a>
+    </div>
+
+    <!-- Create -->
+    <div class="nav-section">
+      <span class="nav-section__label">Create</span>
+      <a class="nav-item" href="builder.html">
+        <span class="nav-item__icon">🛠️</span> Topic Builder
+      </a>
+    </div>
+
+    <!-- Files -->
+    <div class="nav-section">
+      <span class="nav-section__label">Reference</span>
+      <a class="nav-item" href="data/topics.example.json" target="_blank" rel="noopener">
+        <span class="nav-item__icon">📄</span> Example JSON
+      </a>
+      <a class="nav-item" href="README.md" target="_blank" rel="noopener">
+        <span class="nav-item__icon">📖</span> README
+      </a>
+    </div>
+
+    <div class="sidebar__footer">
+      Quiz Engine v2<br />Vanilla JS · No frameworks
+    </div>
+
+  </nav>
+
+  <!-- Everything below is the actual page content -->
+  <div class="page-content">
+
+  <div class="builder-app">
+
+    <!-- ── Page Header ──────────────────────────────────────────── -->
+    <header class="builder-header">
+      <h1 class="builder-header__title">🛠️ Topic Builder</h1>
+      <p class="builder-header__sub">
+        Create, edit, and save quiz topics. Pick an existing topic or start fresh.
+      </p>
+    </header>
+
+    <!-- ── Three-column layout: Topic List | Form | Preview ──── -->
+    <div class="builder-layout">
+
+      <!-- ══ COLUMN 1: Saved Topics List ══════════════════════════ -->
+      <aside class="topic-list-panel" aria-label="Saved topics">
+
+        <div class="topic-list-panel__header">
+          <span class="topic-list-panel__title">My Topics</span>
+          <button id="new-topic-btn" class="btn btn--primary btn--sm" type="button"
+            title="Start a new blank topic">+ New</button>
+        </div>
+
+        <!-- Populated by builder-ui.js on load and after every save -->
+        <ul id="topic-list" class="topic-list" aria-label="Saved topics list">
+          <li class="topic-list__empty">No saved topics yet.</li>
+        </ul>
+
+        <!-- Import from JSON file -->
+        <div class="topic-list-panel__import">
+          <label class="btn btn--ghost btn--sm btn--full" for="import-file-input"
+            title="Import topics from a .json file">
+            📂 Import JSON
+          </label>
+          <input id="import-file-input" type="file" accept=".json"
+            style="display:none" aria-label="Import topics from JSON file" />
+        </div>
+
+      </aside>
+
+      <!-- ══ COLUMN 2: Editor Form ══════════════════════════════════ -->
+      <section class="builder-form" aria-label="Topic editor">
+
+        <!-- ── Unsaved-changes badge ─── -->
+        <div id="dirty-banner" class="dirty-banner hidden" aria-live="polite">
+          ✏️ Unsaved changes
+        </div>
+
+        <!-- SECTION 1 – Topic Meta (collapsible) -->
+        <div class="form-section collapsible" id="section-meta">
+          <button class="section-toggle" aria-expanded="true"
+            aria-controls="section-meta-body" type="button">
+            <span>1 · Topic Info</span>
+            <span class="section-toggle__arrow">▾</span>
+          </button>
+          <div class="section-body" id="section-meta-body">
+
+            <div class="form-row">
+              <label class="form-label" for="meta-key">Topic Key <span class="required">*</span></label>
+              <input id="meta-key" class="form-input" type="text"
+                placeholder="e.g. Football" autocomplete="off" />
+              <p class="form-hint">Unique identifier used in code (no spaces).</p>
+            </div>
+
+            <div class="form-row">
+              <label class="form-label" for="meta-name">Display Name <span class="required">*</span></label>
+              <input id="meta-name" class="form-input" type="text"
+                placeholder="e.g. Football" autocomplete="off" />
+            </div>
+
+            <div class="form-row form-row--two">
+              <div>
+                <label class="form-label" for="meta-icon">Icon (emoji or URL)</label>
+                <input id="meta-icon" class="form-input" type="text"
+                  placeholder="⚽" autocomplete="off" />
+              </div>
+              <div>
+                <label class="form-label" for="meta-placeholder">Input Placeholder</label>
+                <input id="meta-placeholder" class="form-input" type="text"
+                  placeholder="Type a player's name…" autocomplete="off" />
+              </div>
+            </div>
+
+            <div class="form-row form-row--two">
+              <div>
+                <label class="form-label" for="meta-used-label">Used-answers label</label>
+                <input id="meta-used-label" class="form-input" type="text"
+                  placeholder="Players Used" autocomplete="off" />
+              </div>
+              <div>
+                <label class="form-label" for="meta-difficulty-key">Difficulty Category</label>
+                <select id="meta-difficulty-key" class="form-select">
+                  <option value="">— pick after adding categories —</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <label class="form-label" for="meta-desc">Description</label>
+              <textarea id="meta-desc" class="form-textarea" rows="2"
+                placeholder="Guess footballers by their position, league and nationality."></textarea>
+            </div>
+
+          </div><!-- /#section-meta-body -->
+        </div>
+
+        <!-- SECTION 2 – Categories (collapsible) -->
+        <div class="form-section collapsible" id="section-categories">
+          <button class="section-toggle" aria-expanded="true"
+            aria-controls="section-categories-body" type="button">
+            <span>2 · Categories</span>
+            <span class="section-toggle__arrow">▾</span>
+          </button>
+          <div class="section-body" id="section-categories-body">
+
+            <p class="form-hint">
+              Categories are the modifier columns shown on each round card
+              (e.g. Position, League, Country).
+            </p>
+
+            <ul id="category-list" class="category-list" aria-label="Category list"></ul>
+
+            <button id="add-category-btn" class="btn btn--secondary btn--sm" type="button">
+              + Add Category
+            </button>
+
+          </div>
+        </div>
+
+        <!-- SECTION 3 – Difficulty Weights (collapsible, starts collapsed) -->
+        <div class="form-section collapsible" id="section-weights">
+          <button class="section-toggle" aria-expanded="false"
+            aria-controls="section-weights-body" type="button">
+            <span>3 · Difficulty Weights <span class="optional">(optional)</span></span>
+            <span class="section-toggle__arrow">▾</span>
+          </button>
+          <div class="section-body section-body--collapsed" id="section-weights-body">
+
+            <p class="form-hint">
+              Assign a point multiplier to each possible value of the difficulty
+              category. Higher = harder = more points.
+            </p>
+
+            <div id="weights-container"></div>
+
+            <button id="add-weight-btn" class="btn btn--secondary btn--sm" type="button">
+              + Add Weight
+            </button>
+
+          </div>
+        </div>
+
+        <!-- SECTION 4 – Data Items (collapsible) -->
+        <div class="form-section collapsible" id="section-items">
+          <button class="section-toggle" aria-expanded="true"
+            aria-controls="section-items-body" type="button">
+            <span>4 · Data Items</span>
+            <span class="section-toggle__arrow">▾</span>
+          </button>
+          <div class="section-body" id="section-items-body">
+
+            <p class="form-hint">
+              Each item is one answer the player can guess. Drag ⠿ to reorder.
+            </p>
+
+            <!-- Scrollable container for large data sets -->
+            <div class="item-list-scroll">
+              <ul id="item-list" class="item-list" aria-label="Data item list"></ul>
+            </div>
+
+            <button id="add-item-btn" class="btn btn--secondary" type="button">
+              + Add Item
+            </button>
+
+          </div>
+        </div>
+
+        <!-- SECTION 5 – Live API Fetch (collapsible, starts collapsed) -->
+        <div class="form-section collapsible" id="section-api">
+          <button class="section-toggle" aria-expanded="false"
+            aria-controls="section-api-body" type="button">
+            <span>5 · Live API Fetch <span class="optional">(optional)</span></span>
+            <span class="section-toggle__arrow">▾</span>
+          </button>
+          <div class="section-body section-body--collapsed" id="section-api-body">
+
+            <p class="form-hint">
+              Enable to have the quiz engine fetch live data from an external API
+              instead of using the static data items defined in Section 4.
+            </p>
+
+            <div class="form-row form-row--toggle">
+              <label class="toggle-label" for="api-enabled">
+                <input id="api-enabled" type="checkbox" class="toggle-checkbox" />
+                <span class="toggle-switch" aria-hidden="true"></span>
+                Enable live data fetch
+              </label>
+            </div>
+
+            <div id="api-fields" class="api-fields hidden">
+
+              <div class="form-row form-row--two">
+                <div>
+                  <label class="form-label" for="api-provider">Provider</label>
+                  <select id="api-provider" class="form-select">
+                    <option value="API-Football">API-Football</option>
+                  </select>
+                  <p class="form-hint">More providers can be added to the engine.</p>
+                </div>
+                <div>
+                  <label class="form-label" for="api-season">Season</label>
+                  <input id="api-season" class="form-input" type="number"
+                    min="2000" max="2099" placeholder="e.g. 2024" autocomplete="off" />
+                </div>
+              </div>
+
+              <div class="form-row">
+                <label class="form-label" for="api-key">
+                  API Key <span class="required">*</span>
+                </label>
+                <input id="api-key" class="form-input" type="password"
+                  placeholder="Your API key (stored in memory only)" autocomplete="off" />
+                <p class="form-hint">
+                  ⚠️ The key is kept in memory for this session only — it will not
+                  persist after you close the page. Do <strong>not</strong> share or
+                  publish your exported JSON with the key embedded.
+                </p>
+              </div>
+
+              <div class="form-row">
+                <label class="form-label" for="api-leagues">
+                  League IDs <span class="required">*</span>
+                </label>
+                <input id="api-leagues" class="form-input" type="text"
+                  placeholder="e.g. 39, 140, 61  (comma-separated)" autocomplete="off" />
+                <p class="form-hint">
+                  Numeric league IDs from your API provider. API-Football examples:
+                  39 = Premier League, 140 = La Liga, 135 = Serie A, 78 = Bundesliga.
+                </p>
+              </div>
+
+            </div><!-- /#api-fields -->
+
+          </div>
+        </div>
+
+        <!-- Save / Delete action bar -->
+        <div class="editor-actions">
+          <button id="save-topic-btn" class="btn btn--success" type="button">
+            💾 Save Topic
+          </button>
+          <button id="delete-topic-btn" class="btn btn--danger btn--sm" type="button"
+            title="Delete this topic from saved topics">
+            🗑️ Delete
+          </button>
+        </div>
+
+        <!-- Validation summary (shown on save/export attempt) -->
+        <div id="validation-box" class="validation-box hidden" role="alert"></div>
+
+      </section><!-- /.builder-form -->
+
+      <!-- ══ COLUMN 3: Live JSON Preview ══════════════════════════ -->
+      <aside class="builder-preview" aria-label="Live JSON preview">
+
+        <!-- Collapsible preview header -->
+        <div class="preview-header">
+          <button class="preview-collapse-btn" id="preview-collapse-btn"
+            aria-expanded="true" aria-controls="json-preview"
+            type="button" title="Toggle preview">
+            <span class="preview-header__title">Live Preview</span>
+            <span class="preview-collapse-arrow">▾</span>
+          </button>
+          <div class="preview-actions">
+            <button id="copy-btn" class="btn btn--ghost btn--sm" type="button">
+              📋 Copy
+            </button>
+            <button id="export-btn" class="btn btn--primary btn--sm" type="button">
+              ⬇ Export JSON
+            </button>
+          </div>
+        </div>
+
+        <pre id="json-preview" class="json-preview"><code id="json-code"></code></pre>
+
+        <div id="toast" class="toast hidden" aria-live="polite"></div>
+
+      </aside>
+
+    </div><!-- /.builder-layout -->
+
+  </div><!-- /.builder-app -->
+
+  <!-- ── Scripts (load order matters) ─────────────────────────── -->
+  <script src="js/api.js"></script>
+  <script src="js/topics.js"></script>
+  <script src="js/builder.js"></script>
+  <script src="js/builder-ui.js"></script>
+  <script src="js/builder-export.js"></script>
+  <script src="js/nav.js"></script>
+
+  </div><!-- /.page-content -->
+</body>
+</html>

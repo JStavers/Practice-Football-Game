@@ -1,0 +1,831 @@
+/* ============================================================
+   Football Quiz – Styles
+   Mobile-first responsive design, modern & clean UI
+   ============================================================ */
+
+/* ---------- CSS Custom Properties (Theme) ---------- */
+:root {
+  --clr-bg: #0f172a;           /* dark navy background       */
+  --clr-surface: #1e293b;      /* card / panel surface       */
+  --clr-primary: #38bdf8;      /* sky-blue accent            */
+  --clr-primary-dark: #0ea5e9;
+  --clr-success: #4ade80;      /* green  – correct answer    */
+  --clr-error: #f87171;        /* red    – wrong answer      */
+  --clr-text: #f1f5f9;         /* light text                 */
+  --clr-text-muted: #94a3b8;   /* muted / secondary text     */
+  --radius: 12px;
+  --shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+  --transition: 0.25s ease;
+}
+
+/* ---------- Reset & Base ---------- */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  background: var(--clr-bg);
+  color: var(--clr-text);
+  min-height: 100vh;
+  /* Layout (flex-row, padding) is handled by nav.css */
+}
+
+/* ---------- App Container ---------- */
+.app {
+  width: 100%;
+  max-width: 480px;
+  /* Centre within .page-content which is already display:flex justify-content:center */
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding-bottom: 40px;
+}
+
+/* ---------- Header ---------- */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+}
+
+.header__title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.header__scores {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.header__score {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--clr-primary);
+}
+
+.header__high-score {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--clr-text-muted);
+}
+
+/* ---------- Topic Switcher ---------- */
+.topic-switcher {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.topic-switcher__label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--clr-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.topic-switcher__select {
+  flex: 1;
+  padding: 10px 14px;
+  border: 2px solid transparent;
+  border-radius: var(--radius);
+  background: var(--clr-surface);
+  color: var(--clr-text);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  transition: border-color var(--transition);
+  appearance: none;               /* remove default OS arrow */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 36px;
+}
+
+.topic-switcher__select:focus {
+  border-color: var(--clr-primary);
+}
+
+.topic-switcher__select option {
+  background: var(--clr-surface);
+  color: var(--clr-text);
+}
+
+/* ---------- Stacked Round Board ---------- */
+.round-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Individual stack row */
+.stack-row {
+  position: relative;
+  background: var(--clr-surface);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: transform var(--transition), box-shadow var(--transition),
+    border-color var(--transition), opacity var(--transition);
+}
+
+/* Depth-based visual dimming — deeper rows are slightly faded */
+.stack-row[data-depth="1"] { opacity: 0.92; }
+.stack-row[data-depth="2"] { opacity: 0.84; }
+.stack-row[data-depth="3"] { opacity: 0.76; }
+.stack-row[data-depth="4"] { opacity: 0.68; }
+
+.stack-row:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.45);
+}
+
+/* Selected row — bright border */
+.stack-row--selected {
+  border-color: var(--clr-primary);
+  opacity: 1 !important;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
+}
+
+/* Depth bonus badge */
+.stack-row__depth {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--clr-bg);
+  background: var(--clr-primary);
+  border-radius: 6px;
+  padding: 2px 7px;
+}
+
+/* Higher depth = warmer badge colour */
+.stack-row[data-depth="2"] .stack-row__depth { background: #facc15; }
+.stack-row[data-depth="3"] .stack-row__depth { background: #fb923c; }
+.stack-row[data-depth="4"] .stack-row__depth { background: #f87171; }
+
+/* Three labelled modifier cells — mimics the old card layout */
+.stack-row__cells {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.stack-row__cell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.stack-row__label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--clr-text-muted);
+}
+
+.stack-row__value {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.stack-row__cell--position .stack-row__value { color: var(--clr-primary); }
+.stack-row__cell--league   .stack-row__value { color: var(--clr-success); }
+.stack-row__cell--country  .stack-row__value { color: #fbbf24; }
+
+/* ---------- Difficulty Badge ---------- */
+.difficulty {
+  text-align: center;
+  font-size: 0.95rem;
+  color: var(--clr-text-muted);
+}
+
+.difficulty span {
+  font-weight: 700;
+  color: var(--clr-primary);
+}
+
+/* ---------- Answer Form ---------- */
+.answer-form {
+  display: flex;
+  gap: 10px;
+}
+
+.answer-form__input {
+  flex: 1;
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid transparent;
+  border-radius: var(--radius);
+  background: var(--clr-surface);
+  color: var(--clr-text);
+  font-size: 1rem;
+  outline: none;
+  transition: border-color var(--transition);
+}
+
+.answer-form__input::placeholder {
+  color: var(--clr-text-muted);
+}
+
+.answer-form__input:focus {
+  border-color: var(--clr-primary);
+}
+
+.answer-form__btn {
+  padding: 14px 22px;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--clr-primary);
+  color: var(--clr-bg);
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background var(--transition), transform var(--transition);
+}
+
+.answer-form__btn:hover {
+  background: var(--clr-primary-dark);
+}
+
+.answer-form__btn:active {
+  transform: scale(0.96);
+}
+
+/* ---------- Feedback ---------- */
+.feedback {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: var(--radius);
+  padding: 12px;
+  text-align: center;
+  transition: opacity var(--transition);
+}
+
+.feedback--correct {
+  background: rgba(74, 222, 128, 0.15);
+  color: var(--clr-success);
+}
+
+.feedback--incorrect {
+  background: rgba(248, 113, 113, 0.15);
+  color: var(--clr-error);
+}
+
+/* ---------- Game Over Modal ---------- */
+.game-over-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  backdrop-filter: blur(4px);
+}
+
+.game-over-overlay.hidden {
+  display: none;
+}
+
+.game-over-modal {
+  background: var(--clr-surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 40px 32px 32px;
+  text-align: center;
+  max-width: 360px;
+  width: 90%;
+  animation: modal-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes modal-pop {
+  from { transform: scale(0.8); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+
+.game-over-modal__icon {
+  font-size: 3rem;
+  margin-bottom: 8px;
+}
+
+.game-over-modal__title {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--clr-error);
+  margin-bottom: 4px;
+}
+
+.game-over-modal__subtitle {
+  color: var(--clr-text-muted);
+  margin-bottom: 28px;
+  font-size: 0.9rem;
+}
+
+.game-over-modal__scores {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: calc(var(--radius) - 4px);
+  padding: 16px 20px;
+  margin-bottom: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.game-over-modal__score-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.game-over-modal__score-label {
+  color: var(--clr-text-muted);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.game-over-modal__score-value {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--clr-text);
+}
+
+.game-over-modal__score-row--best .game-over-modal__score-value {
+  color: var(--clr-primary);
+}
+
+.game-over-modal__btn {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--clr-primary);
+  color: var(--clr-bg);
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background var(--transition), transform var(--transition);
+}
+
+.game-over-modal__btn:hover {
+  background: var(--clr-primary-dark);
+}
+
+.game-over-modal__btn:active {
+  transform: scale(0.97);
+}
+
+/* ---------- How-to-Play ---------- */
+.how-to-play {
+  background: var(--clr-surface);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+}
+
+.how-to-play h2 {
+  font-size: 1rem;
+  margin-bottom: 10px;
+  color: var(--clr-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.how-to-play ol {
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--clr-text-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+/* ---------- Used Answers ---------- */
+.used-answers {
+  background: var(--clr-surface);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+}
+
+.used-answers h2 {
+  font-size: 1rem;
+  margin-bottom: 10px;
+  color: var(--clr-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.used-answers__list {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.used-answers__list li {
+  background: rgba(56, 189, 248, 0.12);
+  color: var(--clr-primary);
+  padding: 5px 14px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.used-answers__empty {
+  font-size: 0.85rem;
+  color: var(--clr-text-muted);
+  font-style: italic;
+}
+
+/* ---------- Loading Overlay ---------- */
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(15, 23, 42, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.3s ease;
+}
+
+.loading-overlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.loading-overlay__content {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.loading-overlay__content p {
+  color: var(--clr-text-muted);
+  font-size: 0.95rem;
+}
+
+/* Spinner */
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid var(--clr-surface);
+  border-top-color: var(--clr-primary);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ---------- API Config Panel ---------- */
+.api-config {
+  background: var(--clr-surface);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.api-config.hidden {
+  display: none;
+}
+
+.api-config__title {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.api-config__desc {
+  font-size: 0.85rem;
+  color: var(--clr-text-muted);
+  line-height: 1.5;
+}
+
+.api-config__desc a {
+  color: var(--clr-primary);
+  text-decoration: none;
+}
+
+.api-config__row {
+  display: flex;
+  gap: 10px;
+}
+
+.api-config__input {
+  flex: 1;
+  padding: 12px 14px;
+  border: 2px solid transparent;
+  border-radius: var(--radius);
+  background: var(--clr-bg);
+  color: var(--clr-text);
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color var(--transition);
+}
+
+.api-config__input:focus {
+  border-color: var(--clr-primary);
+}
+
+.api-config__btn {
+  padding: 12px 18px;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--clr-primary);
+  color: var(--clr-bg);
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--transition);
+}
+
+.api-config__btn:hover {
+  background: var(--clr-primary-dark);
+}
+
+.api-config__skip {
+  padding: 10px;
+  border: none;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--clr-text-muted);
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-decoration: underline;
+  transition: color var(--transition);
+}
+
+.api-config__skip:hover {
+  color: var(--clr-text);
+}
+
+/* ---------- Data Status Bar ---------- */
+.data-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: var(--clr-text-muted);
+  padding: 6px 0;
+  flex-wrap: wrap;
+}
+
+.data-status__sep {
+  opacity: 0.4;
+}
+
+/* Refresh button — sits in the status bar, hidden until a key is saved */
+.data-status__refresh-btn {
+  margin-left: auto;
+  padding: 4px 10px;
+  border: 1px solid var(--clr-primary);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--clr-primary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+  white-space: nowrap;
+}
+
+.data-status__refresh-btn:hover:not(:disabled) {
+  background: var(--clr-primary);
+  color: var(--clr-bg);
+}
+
+.data-status__refresh-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.data-status__refresh-btn.hidden {
+  display: none;
+}
+
+/* Last-pulled line below the status bar */
+.data-status__fetch-row {
+  font-size: 0.75rem;
+  color: var(--clr-text-muted);
+  font-style: italic;
+  padding-bottom: 4px;
+}
+
+.data-status__fetch-row.hidden {
+  display: none;
+}
+
+/* ---------- Dev Mode Debug Panel ---------- */
+.dev-answers {
+  background: rgba(251, 191, 36, 0.08);
+  border: 1px dashed #fbbf24;
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  font-size: 0.8rem;
+}
+
+.dev-answers.hidden {
+  display: none;
+}
+
+.dev-answers__title {
+  font-weight: 700;
+  color: #fbbf24;
+  margin-bottom: 6px;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.dev-answers__list {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.dev-answers__list li {
+  background: rgba(251, 191, 36, 0.12);
+  color: #fbbf24;
+  padding: 3px 10px;
+  border-radius: 14px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+/* ---------- Autocomplete Dropdown ---------- */
+
+/* Wrapper gives the dropdown a positioning anchor */
+.autocomplete-wrapper {
+  position: relative;
+  flex: 1;
+  min-width: 0; /* prevents flex blowout */
+}
+
+/* The dropdown list sits directly below the input */
+.autocomplete-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  max-height: 240px;
+  overflow-y: auto;
+  background: var(--clr-surface);
+  border: 2px solid var(--clr-primary);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  display: none;           /* hidden by default */
+}
+
+/* Show the list when it has children */
+.autocomplete-list.open {
+  display: block;
+}
+
+/* Individual suggestion item */
+.autocomplete-item {
+  padding: 12px 16px;
+  font-size: 0.95rem;
+  color: var(--clr-text);
+  cursor: pointer;
+  transition: background var(--transition);
+}
+
+/* Hover / keyboard-highlighted item */
+.autocomplete-item:hover,
+.autocomplete-item.highlighted {
+  background: rgba(56, 189, 248, 0.15);
+  color: var(--clr-primary);
+}
+
+/* Subtle divider between items */
+.autocomplete-item + .autocomplete-item {
+  border-top: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+/* Bold the portion of text that matches the query */
+.autocomplete-item strong {
+  color: var(--clr-primary);
+  font-weight: 700;
+}
+
+/* Mobile: make tap targets at least 44px tall */
+@media (max-width: 600px) {
+  .autocomplete-item {
+    padding: 14px 16px;
+    font-size: 1rem;
+  }
+}
+
+/* ---------- Animations ---------- */
+
+/* Shake for incorrect answer */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%      { transform: translateX(-8px); }
+  40%      { transform: translateX(8px); }
+  60%      { transform: translateX(-6px); }
+  80%      { transform: translateX(6px); }
+}
+
+.shake {
+  animation: shake 0.4s ease;
+}
+
+/* Pop for correct answer */
+@keyframes pop {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+
+.pop {
+  animation: pop 0.35s ease;
+}
+
+/* Card entrance */
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.slide-up {
+  animation: slideUp 0.4s ease forwards;
+}
+
+/* ---------- Tablet / Desktop tweak ---------- */
+@media (min-width: 600px) {
+  /*
+   * Switch to a horizontal grid on wider screens.
+   * The number of columns is set by data-cols on .stack-row,
+   * written by ui.js based on topic.categories.length.
+   * Fallback: repeat(3, 1fr) for 3-category topics.
+   */
+  .stack-row__cells {
+    flex-direction: row;
+  }
+
+  .stack-row__cell {
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    text-align: center;
+  }
+
+  /* 2-column topics (e.g. a future 2-category topic) */
+  .stack-row[data-cols="2"] .stack-row__cells {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* 3-column topics (Football, Geography, etc.) */
+  .stack-row[data-cols="3"] .stack-row__cells {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  /* 4-column topics */
+  .stack-row[data-cols="4"] .stack-row__cells {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+  }
+}

@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quiz Engine</title>
+  <!-- nav.css must load first — it resets body to flex-row layout -->
+  <link rel="stylesheet" href="css/nav.css" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+  <!-- ============================================================
+       Shared Sidebar Navigation
+       Same markup is used on every page; nav.js highlights the
+       active link automatically based on the current filename.
+       ============================================================ -->
+
+  <!-- Mobile hamburger button -->
+  <button class="nav-toggle" id="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">
+    <span class="nav-toggle__bar"></span>
+    <span class="nav-toggle__bar"></span>
+    <span class="nav-toggle__bar"></span>
+  </button>
+
+  <!-- Tap-outside overlay (mobile) -->
+  <div class="nav-overlay" id="nav-overlay" aria-hidden="true"></div>
+
+  <nav class="sidebar" aria-label="Site navigation">
+
+    <!-- Brand -->
+    <a class="sidebar__brand" href="index.html">
+      <span class="sidebar__brand-icon">🎮</span>
+      <span>
+        <span class="sidebar__brand-name">Quiz Engine</span><br />
+        <span class="sidebar__brand-tagline">Topic-based quiz system</span>
+      </span>
+    </a>
+
+    <!-- Play -->
+    <div class="nav-section">
+      <span class="nav-section__label">Play</span>
+      <a class="nav-item" href="index.html">
+        <span class="nav-item__icon">🏠</span> Home / Quiz
+      </a>
+    </div>
+
+    <!-- Create -->
+    <div class="nav-section">
+      <span class="nav-section__label">Create</span>
+      <a class="nav-item" href="builder.html">
+        <span class="nav-item__icon">🛠️</span> Topic Builder
+      </a>
+    </div>
+
+    <!-- Files -->
+    <div class="nav-section">
+      <span class="nav-section__label">Reference</span>
+      <a class="nav-item" href="data/topics.example.json" target="_blank" rel="noopener">
+        <span class="nav-item__icon">📄</span> Example JSON
+      </a>
+      <a class="nav-item" href="README.md" target="_blank" rel="noopener">
+        <span class="nav-item__icon">📖</span> README
+      </a>
+    </div>
+
+    <div class="sidebar__footer">
+      Quiz Engine v2<br />Vanilla JS · No frameworks
+    </div>
+
+  </nav>
+
+  <!-- Everything below is the actual page content -->
+  <div class="page-content">
+  <!-- ===== Loading Overlay (shown while fetching API data) ===== -->
+  <div class="loading-overlay" id="loading-overlay">
+    <div class="loading-overlay__content">
+      <div class="spinner"></div>
+      <p id="loading-text">Loading players…</p>
+    </div>
+  </div>
+
+  <div class="app">
+
+    <!-- ===== Header / Score Bar ===== -->
+    <header class="header">
+      <h1 class="header__title" id="app-title">⚽ Football Quiz</h1>
+      <div class="header__scores">
+        <div class="header__score">Score: <span id="score">0</span></div>
+        <div class="header__high-score">Best: <span id="high-score">0</span></div>
+      </div>
+    </header>
+
+    <!-- ===== Topic Switcher ===== -->
+    <div class="topic-switcher">
+      <label for="topic-select" class="topic-switcher__label">Topic:</label>
+      <select id="topic-select" class="topic-switcher__select">
+        <!-- Options are built dynamically by ui.js -->
+      </select>
+    </div>
+
+    <!-- ===== Data-Source Status ===== -->
+    <div class="data-status" id="data-status">
+      <span id="status-text">Offline data</span>
+      <span class="data-status__sep">·</span>
+      <span id="player-count">0</span> players
+      <span class="data-status__stamp" id="last-fetch-stamp"></span>
+      <button type="button" id="api-refresh-btn" class="data-status__refresh-btn hidden" disabled>🔄 Refresh</button>
+    </div>
+    <!-- Last-fetch line shown below status bar when data is live -->
+    <div class="data-status__fetch-row" id="data-fetch-row">
+      <span id="api-last-fetch"></span>
+    </div>
+
+    <!-- ===== Stacked Round Board ===== -->
+    <section class="round-stack" id="round-stack">
+      <!-- Rows are rendered dynamically by script.js -->
+    </section>
+
+    <!-- ===== Dev Mode: Valid Answers (hidden unless DEV_MODE = true) ===== -->
+    <div class="dev-answers hidden" id="dev-answers">
+      <p class="dev-answers__title">🛠 Dev — Valid Answers</p>
+      <ul class="dev-answers__list"></ul>
+    </div>
+
+    <!-- ===== Difficulty Badge ===== -->
+    <div class="difficulty" id="difficulty">
+      Points available: <span id="points-available">0</span>
+    </div>
+
+    <!-- ===== Answer Form ===== -->
+    <form class="answer-form" id="answer-form">
+      <div class="autocomplete-wrapper">
+        <input
+          type="text"
+          id="answer-input"
+          class="answer-form__input"
+          placeholder="Type a player's name…"
+          autocomplete="off"
+          required
+        />
+        <!-- Autocomplete suggestions dropdown -->
+        <ul class="autocomplete-list" id="autocomplete-list" role="listbox"></ul>
+      </div>
+      <button type="submit" class="answer-form__btn" id="submit-btn">
+        Submit
+      </button>
+    </form>
+
+    <!-- ===== Feedback Area ===== -->
+    <div class="feedback" id="feedback"></div>
+
+    <!-- ===== Used Answers (duplicate tracker) ===== -->
+    <section class="used-answers" id="used-answers">
+      <h2 id="used-heading">Players Used</h2>
+      <ul class="used-answers__list" id="used-list"></ul>
+      <p class="used-answers__empty" id="used-empty">No players named yet.</p>
+    </section>
+
+  </div>
+
+  <!-- ===== Game Over Modal ===== -->
+  <div class="game-over-overlay hidden" id="game-over-overlay" role="dialog" aria-modal="true" aria-labelledby="game-over-title">
+    <div class="game-over-modal">
+      <div class="game-over-modal__icon">💀</div>
+      <h2 class="game-over-modal__title" id="game-over-title">Game Over!</h2>
+      <p class="game-over-modal__subtitle">The stack overflowed.</p>
+      <div class="game-over-modal__scores">
+        <div class="game-over-modal__score-row">
+          <span class="game-over-modal__score-label">Your Score</span>
+          <span class="game-over-modal__score-value" id="game-over-score">0</span>
+        </div>
+        <div class="game-over-modal__score-row game-over-modal__score-row--best">
+          <span class="game-over-modal__score-label">Best Score</span>
+          <span class="game-over-modal__score-value" id="game-over-high-score">0</span>
+        </div>
+      </div>
+      <button class="game-over-modal__btn" id="play-again-btn">▶ Play Again</button>
+    </div>
+  </div>
+
+  <!-- Load order matters: topics → api → engine → ui → main -->
+  <script src="js/topics.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/engine.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/main.js"></script>
+
+  <!-- Shared sidebar toggle — load last so all DOM is ready -->
+  <script src="js/nav.js"></script>
+
+  </div><!-- /.page-content -->
+</body>
+</html>

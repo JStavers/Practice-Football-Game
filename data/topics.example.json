@@ -1,0 +1,79 @@
+[
+  {
+    "topicKey": "Football",
+    "topicName": "Football",
+    "icon": "⚽",
+    "description": "Guess footballers by their position, league and nationality.",
+    "placeholder": "Type a player's name…",
+    "usedLabel": "Players Used",
+
+    "categories": ["position", "league", "country"],
+
+    "categoryLabels": {
+      "position": "Position",
+      "league":   "League",
+      "country":  "Country"
+    },
+
+    "categoryColors": {
+      "position": "position",
+      "league":   "league",
+      "country":  "country"
+    },
+
+    "difficultyKey": "league",
+
+    "difficultyWeights": {
+      "Premier League": 1,
+      "La Liga":        1.2,
+      "Serie A":        1.3,
+      "Bundesliga":     1.3,
+      "Ligue 1":        1.5,
+      "MLS":            2
+    },
+
+    "data": [
+      {
+        "name": "Lionel Messi",
+        "attributes": {
+          "position": "Attacking Midfielder",
+          "league":   "MLS",
+          "country":  "Argentina"
+        }
+      },
+      {
+        "name": "Harry Kane",
+        "attributes": {
+          "position": "Striker",
+          "league":   "Bundesliga",
+          "country":  "England"
+        }
+      },
+      {
+        "name": "Virgil van Dijk",
+        "attributes": {
+          "position": "Centre-Back",
+          "league":   "Premier League",
+          "country":  "Netherlands"
+        }
+      },
+      {
+        "name": "Thibaut Courtois",
+        "attributes": {
+          "position": "Goalkeeper",
+          "league":   "La Liga",
+          "country":  "Belgium"
+        }
+      }
+    ],
+
+    "_comment_apiConfig": "Remove this comment and fill in your API key to enable live player fetching.",
+    "apiConfig": {
+      "enabled":  false,
+      "provider": "API-Football",
+      "apiKey":   "",
+      "leagues":  [39, 140, 135, 78, 61, 253],
+      "season":   2024
+    }
+  }
+]
