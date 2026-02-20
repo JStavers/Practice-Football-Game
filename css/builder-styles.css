@@ -615,6 +615,12 @@ body {
   padding: 8px 10px;
 }
 
+/* In API cards the number is just a small badge — don't let it flex-grow */
+.item-card--api .item-card__number {
+  flex: 0;
+  letter-spacing: 0;
+}
+
 .api-item__name {
   font-size: 0.95rem;
   color: var(--clr-text);
