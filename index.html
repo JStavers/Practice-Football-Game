@@ -2,8 +2,28 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Viewport: no zoom tricks, full-width on mobile -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=5.0" />
   <title>Quiz Engine</title>
+
+  <!-- ===== PWA Manifest & Theme ===== -->
+  <link rel="manifest" href="manifest.json" />
+  <!-- Android Chrome toolbar colour -->
+  <meta name="theme-color" content="#38bdf8" />
+  <!-- iOS / Safari PWA support -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Quiz Engine" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <!-- General PWA / Android -->
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="application-name" content="Quiz Engine" />
+  <!-- Prevent phone-number auto-detection on mobile -->
+  <meta name="format-detection" content="telephone=no" />
+  <!-- SEO / sharing -->
+  <meta name="description" content="Topic-based quiz game — Football, Movies, Geography and more." />
+
+  <!-- ===== Styles ===== -->
   <!-- nav.css must load first — it resets body to flex-row layout -->
   <link rel="stylesheet" href="css/nav.css" />
   <link rel="stylesheet" href="css/styles.css" />
@@ -64,11 +84,31 @@
       </a>
     </div>
 
+    <!-- PWA Controls in the sidebar footer -->
     <div class="sidebar__footer">
-      Quiz Engine v2<br />Vanilla JS · No frameworks
+      <span id="pwa-version" class="sidebar__version">v2.0.0</span>
+      Quiz Engine &nbsp;&middot;&nbsp; Vanilla JS
+
+      <!-- Install App button — hidden until browser fires beforeinstallprompt -->
+      <button id="pwa-install-btn" class="pwa-install-btn hidden" type="button">
+        📲 Install App
+      </button>
+
+      <!-- Cache clear / force-refresh -->
+      <button id="pwa-clear-cache-btn" class="pwa-cache-btn" type="button">
+        🗑️ Clear Cache
+      </button>
     </div>
 
   </nav>
+
+  <!-- ===== PWA Update Banner =====
+       Shown automatically when a new service worker version is waiting.   -->
+  <div class="pwa-update-banner hidden" id="pwa-update-banner" role="alert">
+    <span>🚀 A new version is available!</span>
+    <button type="button" id="pwa-update-refresh-btn" class="pwa-update-banner__btn">Refresh</button>
+    <button type="button" id="pwa-update-close-btn"  class="pwa-update-banner__close" aria-label="Dismiss">&times;</button>
+  </div>
 
   <!-- Everything below is the actual page content -->
   <div class="page-content">
@@ -104,6 +144,8 @@
       <span id="status-text">Offline data</span>
       <span class="data-status__sep">·</span>
       <span id="player-count">0</span> players
+      <span class="data-status__sep data-status__season-sep hidden" id="season-sep">·</span>
+      <span id="season-badge" class="data-status__season hidden"></span>
       <span class="data-status__stamp" id="last-fetch-stamp"></span>
       <button type="button" id="api-refresh-btn" class="data-status__refresh-btn hidden" disabled>🔄 Refresh</button>
     </div>
@@ -182,12 +224,19 @@
   <!-- Load order matters: topics → api → engine → ui → main -->
   <script src="js/topics.js"></script>
   <script src="js/api.js"></script>
+  <!-- Mapping + storage utilities (must load before engine.js) -->
+  <script src="js/mappingEngine.js"></script>
+  <script src="js/topicStorage.js"></script>
   <script src="js/engine.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/main.js"></script>
 
   <!-- Shared sidebar toggle — load last so all DOM is ready -->
   <script src="js/nav.js"></script>
+
+  <!-- PWA utilities: service worker registration, install prompt,
+       cache-clear, update banner.  Must load after all other scripts. -->
+  <script src="js/pwa.js"></script>
 
   </div><!-- /.page-content -->
 </body>

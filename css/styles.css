@@ -607,6 +607,24 @@ body {
   opacity: 0.4;
 }
 
+/* Season badge — shown when live API data includes a season year */
+.data-status__season {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--clr-primary);
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 999px;
+  padding: 1px 7px;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+
+.data-status__season.hidden,
+.data-status__season-sep.hidden {
+  display: none;
+}
+
 /* Refresh button — sits in the status bar, hidden until a key is saved */
 .data-status__refresh-btn {
   margin-left: auto;
@@ -828,4 +846,175 @@ body {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
   }
+}
+
+/* ============================================================
+   PWA — Progressive Web App Styles
+   Install button, update banner, sidebar version,
+   touch-friendly overrides, mobile polish.
+   ============================================================ */
+
+/* ── Touch / Mobile Optimisations ──────────────────────────
+   touch-action: manipulation disables the 300ms double-tap
+   delay on Android Chrome, making buttons feel instant.      */
+button,
+select,
+input,
+a,
+label {
+  touch-action: manipulation;
+}
+
+/* Smooth scrolling for the whole page */
+html {
+  scroll-behavior: smooth;
+  /* Prevent iOS rubber-band bounce on the body itself */
+  overscroll-behavior: contain;
+}
+
+/* Ensure all buttons have a comfortable touch target (≥ 44px) */
+button {
+  min-height: 44px;
+}
+
+/* ── Sidebar Version Label ──────────────────────────────────── */
+.sidebar__version {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--clr-text-muted);
+  opacity: 0.6;
+  margin-bottom: 4px;
+  letter-spacing: 0.04em;
+}
+
+/* ── PWA Install Button ──────────────────────────────────────
+   Hidden by default; revealed by pwa.js when the browser
+   signals the app is installable (beforeinstallprompt).      */
+.pwa-install-btn {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  padding: 10px 14px;
+  background: var(--clr-primary);
+  color: var(--clr-bg);
+  font-size: 0.82rem;
+  font-weight: 700;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background var(--transition), transform 0.1s;
+  text-align: center;
+}
+
+.pwa-install-btn:hover {
+  background: var(--clr-primary-dark);
+}
+
+.pwa-install-btn:active {
+  transform: scale(0.97);
+}
+
+.pwa-install-btn.hidden {
+  display: none;
+}
+
+/* ── Cache Clear Button ──────────────────────────────────────
+   Sits below the install button in the sidebar footer.       */
+.pwa-cache-btn {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px 14px;
+  background: transparent;
+  color: var(--clr-text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: border-color var(--transition), color var(--transition);
+  text-align: center;
+}
+
+.pwa-cache-btn:hover {
+  border-color: var(--clr-error);
+  color: var(--clr-error);
+}
+
+.pwa-cache-btn:active {
+  transform: scale(0.97);
+}
+
+/* ── Update Banner ───────────────────────────────────────────
+   Fixed bar at the bottom of the screen.
+   Appears when a new service worker version is waiting.      */
+.pwa-update-banner {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 20px;
+  background: #1e3a5f;
+  border-top: 2px solid var(--clr-primary);
+  color: var(--clr-text);
+  font-size: 0.88rem;
+  font-weight: 500;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.4);
+  /* Slide up animation */
+  animation: bannerSlideUp 0.35s ease;
+}
+
+@keyframes bannerSlideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.pwa-update-banner.hidden {
+  display: none;
+}
+
+.pwa-update-banner__btn {
+  padding: 6px 18px;
+  min-height: 36px;
+  background: var(--clr-primary);
+  color: var(--clr-bg);
+  font-size: 0.82rem;
+  font-weight: 700;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background var(--transition);
+}
+
+.pwa-update-banner__btn:hover {
+  background: var(--clr-primary-dark);
+}
+
+.pwa-update-banner__close {
+  padding: 4px 10px;
+  min-height: 36px;
+  background: transparent;
+  color: var(--clr-text-muted);
+  font-size: 1.1rem;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  line-height: 1;
+  transition: color var(--transition);
+}
+
+.pwa-update-banner__close:hover {
+  color: var(--clr-text);
+}
+
+/* ── Sidebar footer — stack the new PWA controls vertically ─── */
+.sidebar__footer .pwa-install-btn,
+.sidebar__footer .pwa-cache-btn {
+  margin-top: 10px;
 }

@@ -55,6 +55,10 @@ const dom = {
   usedEmpty: document.getElementById("used-empty"),
   usedHeading: document.getElementById("used-heading"),
 
+  // Season badge (shown for live API topics with a known season)
+  seasonBadge: document.getElementById("season-badge"),
+  seasonSep:   document.getElementById("season-sep"),
+
   // Dev panel
   devPanel: document.getElementById("dev-answers"),
 
@@ -214,6 +218,37 @@ function updateLastFetched(ts) {
   const text = ts ? `Last pulled: ${formatFetchTime(ts)}` : "";
   if (dom.apiLastFetch) dom.apiLastFetch.textContent = text;
   if (dom.dataFetchRow) dom.dataFetchRow.classList.toggle("hidden", !ts);
+}
+
+/**
+ * Format a season year into a short slash-notation label.
+ * e.g. 2024 → "24/25", 2023 → "23/24"
+ * @param {number|string} year
+ * @returns {string}
+ */
+function formatSeasonLabel(year) {
+  const y = Number(year);
+  if (isNaN(y)) return String(year);
+  const start = String(y).slice(-2);
+  const end   = String(y + 1).slice(-2);
+  return `${start}/${end} Season`;
+}
+
+/**
+ * Show or hide the season badge in the data-status bar.
+ * Pass a year (e.g. 2024) to display it; pass null/undefined to hide it.
+ * @param {number|string|null} season
+ */
+function updateSeasonBadge(season) {
+  if (!dom.seasonBadge || !dom.seasonSep) return;
+  if (season != null && season !== "") {
+    dom.seasonBadge.textContent = formatSeasonLabel(season);
+    dom.seasonBadge.classList.remove("hidden");
+    dom.seasonSep.classList.remove("hidden");
+  } else {
+    dom.seasonBadge.classList.add("hidden");
+    dom.seasonSep.classList.add("hidden");
+  }
 }
 
 /**
@@ -554,6 +589,7 @@ const ui = {
   // Status
   updateStatusBar,
   updateLastFetched,
+  updateSeasonBadge,
   setRefreshEnabled,
 
   // Feedback

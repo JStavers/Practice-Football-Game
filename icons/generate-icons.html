@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<!--
+  ================================================================
+  icons/generate-icons.html — PWA Icon Generator
+  ================================================================
+  Open this file in your browser ONCE to generate the two PNG icon
+  files required by the PWA manifest:
+
+      icons/icon-192.png
+      icons/icon-512.png
+
+  Steps:
+    1. Open this file in Chrome or Firefox.
+    2. Click "Download icon-192.png" and save it to  icons/
+    3. Click "Download icon-512.png" and save it to  icons/
+    4. Done — you won't need this page again.
+  ================================================================
+-->
+<head>
+  <meta charset="UTF-8" />
+  <title>Generate PWA Icons</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #0f172a;
+      color: #f1f5f9;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+      gap: 24px;
+    }
+    h1  { color: #38bdf8; font-size: 1.4rem; }
+    p   { color: #94a3b8; max-width: 420px; text-align: center; line-height: 1.6; }
+    canvas { border: 2px solid #334155; border-radius: 12px; }
+    .row { display: flex; gap: 32px; flex-wrap: wrap; justify-content: center; }
+    .card {
+      display: flex; flex-direction: column; align-items: center; gap: 12px;
+      background: #1e293b; border-radius: 16px; padding: 24px;
+    }
+    button {
+      padding: 10px 22px;
+      background: #38bdf8;
+      color: #0f172a;
+      font-weight: 700;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    button:hover { background: #0ea5e9; }
+    .label { font-size: 0.85rem; color: #94a3b8; }
+    ol { color: #94a3b8; line-height: 2; max-width: 420px; }
+  </style>
+</head>
+<body>
+
+  <h1>🎮 PWA Icon Generator</h1>
+  <p>
+    This page draws the Quiz Engine icon onto a &lt;canvas&gt; and lets you
+    download the two PNG sizes required by <code>manifest.json</code>.
+  </p>
+
+  <ol>
+    <li>Click each <strong>Download</strong> button below.</li>
+    <li>Save the file into the <code>icons/</code> folder.</li>
+    <li>You're done — delete or ignore this page afterwards.</li>
+  </ol>
+
+  <div class="row" id="canvases"></div>
+
+  <script>
+    /**
+     * Draws the Quiz Engine icon onto a canvas.
+     * @param {number} size - the canvas width & height in pixels
+     * @returns {HTMLCanvasElement}
+     */
+    function drawIcon(size) {
+      const canvas = document.createElement("canvas");
+      canvas.width  = size;
+      canvas.height = size;
+      const ctx = canvas.getContext("2d");
+      const cx  = size / 2;
+      const cy  = size / 2;
+      const s   = size / 512; // scale factor relative to 512px design
+
+      // ── Background ──────────────────────────────────────────
+      ctx.fillStyle = "#0f172a";
+      ctx.beginPath();
+      ctx.arc(cx, cy, size / 2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // ── Accent ring ─────────────────────────────────────────
+      ctx.strokeStyle = "rgba(56,189,248,0.25)";
+      ctx.lineWidth   = 12 * s;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 220 * s, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // ── Q circle ────────────────────────────────────────────
+      const qR = 120 * s;
+      const qY = 240 * s; // Q centre is slightly above canvas centre
+      ctx.strokeStyle = "#38bdf8";
+      ctx.lineWidth   = 28 * s;
+      ctx.lineCap     = "round";
+      ctx.beginPath();
+      ctx.arc(cx, qY, qR, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // ── Q tail ──────────────────────────────────────────────
+      ctx.beginPath();
+      ctx.moveTo(340 * s, 320 * s);
+      ctx.lineTo(390 * s, 375 * s);
+      ctx.stroke();
+
+      // ── Tick / check inside Q ───────────────────────────────
+      ctx.strokeStyle = "#4ade80";
+      ctx.lineWidth   = 24 * s;
+      ctx.lineJoin    = "round";
+      ctx.beginPath();
+      ctx.moveTo(198 * s, 240 * s);
+      ctx.lineTo(236 * s, 278 * s);
+      ctx.lineTo(314 * s, 200 * s);
+      ctx.stroke();
+
+      return canvas;
+    }
+
+    /** Appends a card with a preview canvas and download button. */
+    function addCard(size) {
+      const canvas = drawIcon(size);
+      canvas.style.width  = Math.min(size, 192) + "px";
+      canvas.style.height = Math.min(size, 192) + "px";
+
+      const btn = document.createElement("button");
+      btn.textContent = `Download icon-${size}.png`;
+      btn.addEventListener("click", () => {
+        const link    = document.createElement("a");
+        link.download = `icon-${size}.png`;
+        link.href     = canvas.toDataURL("image/png");
+        link.click();
+      });
+
+      const label = document.createElement("span");
+      label.className   = "label";
+      label.textContent = `${size} × ${size} px`;
+
+      const card = document.createElement("div");
+      card.className = "card";
+      card.appendChild(canvas);
+      card.appendChild(label);
+      card.appendChild(btn);
+
+      document.getElementById("canvases").appendChild(card);
+    }
+
+    // Generate both required sizes
+    addCard(192);
+    addCard(512);
+  </script>
+
+</body>
+</html>

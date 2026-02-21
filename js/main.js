@@ -35,7 +35,14 @@ async function setTopicAndRestart(topicKey) {
   const ac = state.topic?.apiConfig;
   ui.setRefreshEnabled(!!(ac?.enabled && ac?.apiKey));
 
+  // Season badge — derive season from apiConfig, or legacy Football fallback
+  const season = state.isLiveData
+    ? (ac?.season || (state.topic.topicKey === "Football" ? (CONFIG.LEAGUES_TO_FETCH[0]?.season || null) : null))
+    : null;
+  ui.updateSeasonBadge(season);
+
   ui.updateScore(state.score);
+  ui.updateHighScore(state.highScore); // always keep the Best display in sync
   ui.renderUsedNames(state.usedNames);
   pushNewRound(true); // true = select the first round automatically
 }
@@ -65,6 +72,13 @@ async function handleApiRefresh() {
 
   const ts = getTopicCacheTimestamp(state.topic.topicKey);
   ui.updateLastFetched(state.isLiveData ? ts : null);
+
+  // Refresh season badge after re-fetch
+  const refreshAc = state.topic?.apiConfig;
+  const refreshSeason = state.isLiveData
+    ? (refreshAc?.season || (state.topic.topicKey === "Football" ? (CONFIG.LEAGUES_TO_FETCH[0]?.season || null) : null))
+    : null;
+  ui.updateSeasonBadge(refreshSeason);
 
   ui.setRefreshEnabled(true);
 }
@@ -128,7 +142,7 @@ document.addEventListener("click", (e) => {
 
 (async function init() {
   state.highScore = loadHighScore();
-  ui.dom.highScoreDisplay.textContent = state.highScore;
+  ui.updateHighScore(state.highScore);
 
   ui.renderTopicSelect("Football");
   ui.renderUsedNames(state.usedNames);

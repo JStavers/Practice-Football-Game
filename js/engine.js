@@ -346,8 +346,12 @@ function validateTopicJSON(raw, idx = 0) {
   }
 
   // ── data ────────────────────────────────────
-  if (!Array.isArray(raw.data) || raw.data.length === 0) {
-    errors.push(`${prefix}: "data" must be a non-empty array.`);
+  // Allow empty data when a custom API will supply items at runtime
+  const hasCustomApi = raw.customApiConfig && raw.customApiConfig.enabled === true;
+  if (!Array.isArray(raw.data)) {
+    errors.push(`${prefix}: "data" must be an array.`);
+  } else if (raw.data.length === 0 && !hasCustomApi) {
+    errors.push(`${prefix}: "data" must be a non-empty array (or enable customApiConfig).`);
   } else {
     const categories = Array.isArray(raw.categories) ? raw.categories : [];
 
@@ -500,7 +504,10 @@ function convertRawTopic(raw) {
     multipliers,
     data,
     // Pass through apiConfig if present (engine will use it during initTopicData)
-    apiConfig:      raw.apiConfig      || null,
+    apiConfig:        raw.apiConfig       || null,
+    // Pass through custom API config and field mapping (Section 6)
+    customApiConfig:  raw.customApiConfig || null,
+    fieldMapping:     raw.fieldMapping    || null,
   };
 }
 
@@ -1118,16 +1125,32 @@ function loadCachedPlayers() {
  */
 async function initTopicData(topic) {
   const topicKey = topic.topicKey;
-  const ac       = topic.apiConfig || null;
+  const ac       = topic.apiConfig     || null;
+  const cac      = topic.customApiConfig || null;
 
-  // Whether a live API fetch is configured for this topic
-  const shouldFetch = ac?.enabled === true || _apiKeys.has(topicKey);
+  // Whether API-Football live fetch is enabled
+  const shouldFetchFootball = ac?.enabled === true || _apiKeys.has(topicKey);
+  // Whether the generic custom-API fetch is enabled
+  const shouldFetchCustom   = cac?.enabled === true;
 
   // ── 1. Per-topic cache ──────────────────────────────────────
-  // Serve from cache unless the league config has changed since last fetch.
-  // The Refresh button also busts the cache manually.
+  // 1a. Custom-API cache — served with a 24-hour TTL, no signature check needed.
+  if (shouldFetchCustom && typeof getCachedCustomApiItems === "function") {
+    const customCached = getCachedCustomApiItems(topicKey);
+    if (customCached && customCached.length > 0) {
+      state.items = customCached.map(item => ({
+        ...item,
+        searchName: (item.name || "").toLowerCase(),
+      }));
+      state.isLiveData = true;
+      return;
+    }
+  }
+
+  // 1b. API-Football cache — serve from cache unless the league config has
+  //     changed since last fetch. The Refresh button also busts manually.
   const cached = loadCachedTopicItems(topicKey);
-  if (cached) {
+  if (cached && !shouldFetchCustom) {
     // Check if the league/season config matches what was cached
     const currentSig = buildCacheSig(ac);
     const storedSig  = lsGet(lsCacheSigKey(topicKey)) || "";
@@ -1145,12 +1168,35 @@ async function initTopicData(topic) {
     } catch { /* ignore */ }
   }
 
-  // ── 2. Live API fetch ───────────────────────────────────────
+  // 2a. Generic Custom API fetch (Section 6 of the builder)
+  // Runs before the Football fetch so custom-API topics don't fall through
+  // to the Football code path.
+  if (shouldFetchCustom && typeof performCustomApiFetch === "function") {
+    ui.showLoading(true, "Fetching custom API data…");
+    try {
+      const customResult = await fetchCustomApiTopicData(topic);
+      if (customResult.length > 0) {
+        state.items      = customResult;
+        state.isLiveData = true;
+        if (typeof cacheCustomApiItems === "function") {
+          cacheCustomApiItems(topicKey, customResult);
+        }
+        ui.showLoading(false);
+        return;
+      }
+      console.warn(`[Engine] Custom API returned 0 items for "${topicKey}" — using static fallback.`);
+    } catch (err) {
+      console.error(`[Engine] Custom API fetch failed for "${topicKey}":`, err);
+    }
+    ui.showLoading(false);
+  }
+
+  // 2b. API-Football fetch (original logic; skipped when custom-API is active)
   // Only reached when there is NO cache at all (brand new topic, never fetched).
   // Config-change cache busts fall through to static fallback below —
   // the user must press the Refresh button to trigger a new fetch.
-  const hasCacheAfterBust = !!loadCachedTopicItems(topicKey);
-  if (!hasCacheAfterBust && shouldFetch) {
+  const hasCacheAfterBust = !shouldFetchCustom && !!loadCachedTopicItems(topicKey);
+  if (!hasCacheAfterBust && shouldFetchFootball && !shouldFetchCustom) {
     // Resolve the API key: runtime map first, then embedded in topic JSON
     const apiKey = _apiKeys.get(topicKey) || ac?.apiKey || null;
 
@@ -1188,7 +1234,7 @@ async function initTopicData(topic) {
     }
   }
 
-  state.items      = topic.data.map((item) => ({ ...item }));
+  state.items      = (topic.data || []).map((item) => ({ ...item }));
   state.isLiveData = false;
 }
 
@@ -1213,6 +1259,37 @@ async function fetchTopicDataFromAPI(topic, ac, apiKey) {
   }
 
   throw new Error(`[Engine] Unknown API provider: "${provider}"`);
+}
+
+/**
+ * Fetches and normalizes items for a topic that uses the generic
+ * custom-API configuration (customApiConfig + fieldMapping).
+ *
+ * Depends on: performCustomApiFetch() from topicStorage.js
+ *             normalizeItems() from mappingEngine.js (called internally)
+ *
+ * @param {object} topic — internal topic with customApiConfig + fieldMapping
+ * @returns {Promise<object[]>} — normalized { name, searchName, attributes } items
+ */
+async function fetchCustomApiTopicData(topic) {
+  const cac = topic.customApiConfig;
+  const fm  = topic.fieldMapping;
+
+  if (!cac || !cac.enabled) return [];
+
+  // fieldMapping is stored in the JSON as { name: string, categories: object }
+  const result = await performCustomApiFetch(cac, fm || null);
+
+  if (result.error) {
+    throw new Error(result.error);
+  }
+
+  // Add searchName for the engine's case-insensitive matching
+  return result.items.map(item => ({
+    name:       item.name,
+    searchName: item.name.toLowerCase(),
+    attributes: item.attributes || {},
+  }));
 }
 
 /**

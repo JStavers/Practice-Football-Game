@@ -80,6 +80,7 @@ function render() {
   renderWeights();
   renderItemList();
   renderApiConfig();
+  renderCustomApiSection();   // Section 6 — Custom API Builder
   renderPreview();
   renderTopicList();
 }
@@ -966,7 +967,6 @@ dom.apiLeagues.addEventListener("input", e => {
 
 /* ── Initial render on page load ────────────────────────────── */
 initCollapsibleSections();
-initPreviewCollapse();
-// Initial render without marking dirty — page is clean on load
+initPreviewCollapse();initCustomApiSection(); // Section 6 — wire all custom-api event listeners// Initial render without marking dirty — page is clean on load
 render();
 renderTopicList();

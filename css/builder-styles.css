@@ -977,7 +977,256 @@ body {
   border-radius: var(--radius-sm);
 }
 
+/* ============================================================
+   SECTION 6 — CUSTOM API BUILDER
+   ============================================================ */
+
+/* Same panel style as .api-fields */
+#custom-api-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 4px;
+  padding: 16px;
+  background: var(--clr-surface-2);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-sm);
+}
+
+/* ---------- Key / Value editor ---------- */
+
+/* Wrapper that holds all the kv-row entries */
+.kv-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 6px;
+  min-height: 8px;
+}
+
+/* One row of key + value + remove */
+.kv-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 6px;
+  align-items: center;
+}
+
+/* Narrower on small screens */
+@media (max-width: 540px) {
+  .kv-row {
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto;
+  }
+  .kv-row .kv-key  { grid-column: 1; grid-row: 1; }
+  .kv-row .kv-val  { grid-column: 1; grid-row: 2; }
+  .kv-row .kv-remove { grid-column: 2; grid-row: 1 / span 2; }
+}
+
+.kv-empty {
+  font-style: italic;
+  color: var(--clr-text-muted);
+  font-size: 0.8rem;
+}
+
+/* ---------- Test output ---------- */
+
+.api-test-output {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Status bar — colour changes based on result */
+.api-test-status {
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.88rem;
+  font-weight: 600;
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+}
+
+.api-test-status--loading {
+  color: var(--clr-text-muted);
+  border-color: var(--clr-border);
+}
+
+.api-test-status--success {
+  color: var(--clr-success);
+  border-color: var(--clr-success);
+  background: rgba(74, 222, 128, 0.08);
+}
+
+.api-test-status--error {
+  color: var(--clr-error);
+  border-color: var(--clr-error);
+  background: rgba(248, 113, 113, 0.08);
+}
+
+/* Sample data preview */
+.api-sample-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.api-sample-json {
+  background: var(--clr-bg);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--clr-text-muted);
+  overflow-x: auto;
+  max-height: 280px;
+  overflow-y: auto;
+  white-space: pre;
+}
+
+/* ---------- Field Mapping section ---------- */
+
+.section-divider {
+  border: none;
+  border-top: 1px solid var(--clr-border);
+  margin: 8px 0 16px;
+}
+
+.subsection-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--clr-primary);
+  margin-bottom: 4px;
+  letter-spacing: 0.3px;
+}
+
+/* List of category → field rows */
+.mapping-categories {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 6px;
+  min-height: 8px;
+}
+
+/* One mapping row: [category name input] [field dropdown] [delete] */
+.mapping-cat-row {
+  display: grid;
+  grid-template-columns: 1fr 1.1fr 1.1fr auto;
+  gap: 6px;
+  align-items: center;
+}
+
+@media (max-width: 700px) {
+  .mapping-cat-row {
+    /* Stack name / field / transform vertically with remove button to the right */
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto auto;
+  }
+  .mapping-cat-row .mapping-cat-name      { grid-column: 1; grid-row: 1; }
+  .mapping-cat-row .mapping-cat-field     { grid-column: 1; grid-row: 2; }
+  .mapping-cat-row .mapping-cat-transform { grid-column: 1; grid-row: 3; }
+  .mapping-cat-row .mapping-cat-remove    { grid-column: 2; grid-row: 1 / span 3; align-self: center; }
+}
+
+
+/* Narrow number/short-value inputs */
+.form-input--short {
+  max-width: 100px;
+}
+
 .api-fields.hidden {
   display: none;
 }
 
+/* ── Authorization block ─────────────────────────────────────── */
+
+.auth-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--bg-secondary, #f7f8fa);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 6px;
+  margin-top: 4px;
+}
+
+.auth-type-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.auth-type-row .form-label--inline {
+  white-space: nowrap;
+  margin-bottom: 0;
+  min-width: 48px;
+}
+
+.auth-type-select {
+  flex: 1;
+}
+
+/* Container that wraps the conditional credential inputs */
+.auth-credential-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Each auth-type sub-panel */
+.auth-sub {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.auth-sub .form-label--inline {
+  white-space: nowrap;
+  margin-bottom: 0;
+  min-width: 48px;
+}
+
+.auth-sub .form-input {
+  flex: 1;
+}
+
+/* Form label variant that sits inline with an input */
+.form-label--inline {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted, #64748b);
+}
+
+/* badge for optional fields */
+.badge {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 1px 6px;
+  border-radius: 99px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+.badge--optional {
+  background: var(--bg-secondary, #f1f5f9);
+  color: var(--text-muted, #64748b);
+  border: 1px solid var(--border-color, #cbd5e1);
+}
+
+@media (max-width: 480px) {
+  .auth-type-row,
+  .auth-sub {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .auth-type-row .form-label--inline,
+  .auth-sub .form-label--inline {
+    min-width: unset;
+  }
+}

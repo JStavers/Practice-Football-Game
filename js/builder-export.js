@@ -88,7 +88,7 @@ function buildTopicObject() {
     data,
   };
 
-  /* ── Attach apiConfig when enabled ── */
+  /* ── Attach apiConfig when enabled (Section 5 — API-Football) ── */
   const ac = state.apiConfig;
   if (ac.enabled) {
     obj.apiConfig = {
@@ -99,6 +99,57 @@ function buildTopicObject() {
       ...(ac.apiKey ? { apiKey: ac.apiKey } : {}),
       leagues:  ac.leagues.length ? ac.leagues : [],
       season:   ac.season || 2024,
+    };
+  }
+
+  /* ── Attach customApiConfig when enabled (Section 6 — Custom API) ── */
+  const cac = state.customApiConfig;
+  if (cac.enabled) {
+    // Auth: persist type + headerName so the config can be shared.
+    // The credential (token/password) is NEVER written to disk — it must
+    // be re-entered each session (treated like the API-Football key).
+    const auth = cac.auth || {};
+    const authMeta = { type: auth.type || "none" };
+    if (auth.type === "apikey") {
+      authMeta.headerName = (auth.headerName || "X-API-Key").trim();
+    }
+
+    obj.customApiConfig = {
+      enabled:     true,
+      baseUrl:     cac.baseUrl   || "",
+      endpoint:    cac.endpoint  || "",
+      method:      cac.method    || "GET",
+      auth:        authMeta,
+      // Serialize [{id,key,value}] arrays → plain objects for clean JSON
+      headers:     _kvArrayToObj(cac.headers),
+      queryParams: _kvArrayToObj(cac.queryParams),
+      dataPath:    cac.dataPath  || "",
+      // Only include maxPages when > 1 to keep the exported JSON clean
+      ...(cac.maxPages > 1 ? { maxPages: Math.floor(cac.maxPages) } : {}),
+      // schemaUrl is a discovery helper — useful to save in the file
+      ...(cac.schemaUrl ? { schemaUrl: cac.schemaUrl.trim() } : {}),
+    };
+  }
+
+  /* ── Attach fieldMapping when a name field is configured ── */
+  const fm = state.fieldMapping;
+  if (fm.nameField || fm.categories.length > 0) {
+    // Serialize [{id,categoryName,fieldKey,transform}] → plain objects
+    const categoriesObj = {};
+    const transformsObj = {};
+    fm.categories.forEach(c => {
+      const catKey = (c.categoryName || "")
+        .toLowerCase().trim().replace(/[^a-z0-9 _]/g, "").replace(/\s+/g, "_");
+      if (catKey && c.fieldKey) {
+        categoriesObj[catKey] = c.fieldKey;
+        if (c.transform) transformsObj[catKey] = c.transform;  // only when set
+      }
+    });
+    obj.fieldMapping = {
+      name:       fm.nameField || "",
+      categories: categoriesObj,
+      // Only include transforms block when at least one transform is configured
+      ...(Object.keys(transformsObj).length > 0 ? { transforms: transformsObj } : {}),
     };
   }
 
@@ -164,10 +215,12 @@ function validateState() {
   });
 
   /* ── Data item checks (skip when API provides data) ── */
-  const usingApi = state.apiConfig.enabled;
+  // Either the API-Football source (Section 5) or the Custom API (Section 6)
+  // can supply items — both exempt the topic from needing static data entries.
+  const usingApi = state.apiConfig.enabled || state.customApiConfig.enabled;
   const manualItems = state.items.filter(item => !item._fromApi);
   if (!usingApi && manualItems.length === 0) {
-    errors.push("Add at least one data item (Section 4), or enable the API in Section 5.");
+    errors.push("Add at least one data item (Section 4), or enable an API in Section 5 or 6.");
   } else if (!usingApi) {
     const validKeys = getValidCategoryKeys();
     manualItems.forEach((item, i) => {
@@ -188,7 +241,7 @@ function validateState() {
     });
   }
 
-  /* ── API Config checks (only when enabled) ── */
+  /* ── API Config checks (Section 5 — API-Football, only when enabled) ── */
   const ac = state.apiConfig;
   if (ac.enabled) {
     if (!ac.provider) {
@@ -201,6 +254,38 @@ function validateState() {
       errors.push("API Config (Section 5): Season must be a valid year (2000–2099).");
     }
     // Note: apiKey is optional at export time — can be entered in the quiz UI
+  }
+
+  /* ── Custom API Config checks (Section 6, only when enabled) ── */
+  const cac = state.customApiConfig;
+  if (cac.enabled) {
+    if (!cac.baseUrl.trim()) {
+      errors.push("Custom API (Section 6): Base URL is required.");
+    }
+
+    // Field mapping is required when the custom API is the data source
+    const usingCustomApi = cac.enabled && !state.apiConfig.enabled;
+    if (usingCustomApi) {
+      if (!state.fieldMapping.nameField) {
+        errors.push(
+          "Custom API (Section 6): Select a field to use as the item name in the Field Mapping."
+        );
+      }
+      if (state.fieldMapping.categories.length === 0) {
+        errors.push(
+          "Custom API (Section 6): Add at least one category mapping in the Field Mapping."
+        );
+      } else {
+        state.fieldMapping.categories.forEach((c, i) => {
+          if (!c.categoryName.trim()) {
+            errors.push(`Custom API Field Mapping: Category ${i + 1} needs a name.`);
+          }
+          if (!c.fieldKey) {
+            errors.push(`Custom API Field Mapping: Category ${i + 1} needs a field selected.`);
+          }
+        });
+      }
+    }
   }
 
   return errors;
@@ -341,6 +426,22 @@ function toTitleCase(key) {
   return key
     .replace(/_/g, " ")
     .replace(/\b\w/g, ch => ch.toUpperCase());
+}
+
+/**
+ * Converts an [{id, key, value}] array (used in editor state) to
+ * a plain { key: value } object (used in the exported JSON).
+ * Rows with empty keys are skipped.
+ * @param {Array<{key:string, value:string}>} arr
+ * @returns {object}
+ */
+function _kvArrayToObj(arr) {
+  const obj = {};
+  if (!Array.isArray(arr)) return obj;
+  arr.forEach(({ key, value }) => {
+    if (key && key.trim()) obj[key.trim()] = value ?? "";
+  });
+  return obj;
 }
 
 /**

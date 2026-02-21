@@ -60,6 +60,39 @@ const state = {
      'attrs' — plain object keyed by category key, e.g. { position: "Striker" }
   ── */
   items: [],
+
+  /* ── Custom API config (Section 6) ──
+     Generic REST API configuration. Unlike the API-Football section
+     (Section 5), this works with any JSON API by letting the user
+     specify the URL, headers, query params, data path, and field mapping.
+  ── */
+  customApiConfig: {
+    enabled:     false,
+    baseUrl:     "",
+    endpoint:    "",
+    method:      "GET",
+    /* ── Authorization (assembled into a header automatically) ── */
+    auth: {
+      type:        "none",    // "none" | "bearer" | "basic" | "apikey"
+      credential:  "",        // bearer: token; basic: "user:pass"; apikey: key value
+      headerName:  "X-API-Key", // used only when type === "apikey"
+    },
+    headers:     [],     // [{id, key, value}]  — converted to plain obj on export
+    queryParams: [],     // [{id, key, value}]  — same
+    dataPath:    "",     // dot-path to the array, e.g. "response" or "data.players"
+    maxPages:    1,      // auto-paginate up to this many pages (TMDB-style ?page=N)
+    schemaUrl:   "",     // alternate URL used ONLY for the Test / field-discovery fetch
+  },
+
+  /* ── Field mapping ──
+     Maps raw API field paths to quiz item fields.
+     nameField   — dot-path used as item.name
+     categories  — [{id, categoryName, fieldKey}] — each category label + its dot-path
+  ── */
+  fieldMapping: {
+    nameField:  "",
+    categories: [],
+  },
 };
 
 /* ── Monotonic ID counter ───────────────────────────────────── */
@@ -275,6 +308,12 @@ function updateMeta(field, value) {
   state.meta[field] = value;
   onStateChange();
 }
+
+/* ── Custom API Config update ───────────────────────────────── */
+
+// NOTE: The per-field update functions for customApiConfig and fieldMapping
+// are defined in apiBuilder.js (updateCustomApiField, addCustomHeader, etc.)
+// so that all Section 6 logic stays in one module.
 
 /* ── API Config update ──────────────────────────────────────── */
 
@@ -507,7 +546,7 @@ function loadTopicIntoEditor(topic) {
     }));
   }
 
-  // ── API Config ────────────────────────────────────────────
+  // ── API Config (Section 5 — API-Football) ───────────────────
   const ac2 = topic.apiConfig;
   if (ac2 && typeof ac2 === "object") {
     state.apiConfig.enabled  = Boolean(ac2.enabled);
@@ -522,6 +561,66 @@ function loadTopicIntoEditor(topic) {
     state.apiConfig.leagues  = [];
     state.apiConfig.season   = new Date().getFullYear();
   }
+
+  // ── Custom API Config (Section 6) ────────────────────────────
+  const cac = topic.customApiConfig;
+  if (cac && typeof cac === "object") {
+    state.customApiConfig.enabled  = Boolean(cac.enabled);
+    state.customApiConfig.baseUrl  = cac.baseUrl  || "";
+    state.customApiConfig.endpoint = cac.endpoint || "";
+    state.customApiConfig.method   = cac.method   || "GET";
+    state.customApiConfig.dataPath = cac.dataPath || "";
+    // headers: stored as plain object in JSON → convert to [{id, key, value}] for editor
+    state.customApiConfig.headers = Object.entries(cac.headers || {})
+      .map(([key, value]) => ({ id: makeId(), key, value: String(value) }));
+    // queryParams: same conversion
+    state.customApiConfig.queryParams = Object.entries(cac.queryParams || {})
+      .map(([key, value]) => ({ id: makeId(), key, value: String(value) }));
+    // auth: restore type + headerName only (credential is session-only, never serialized)
+    const loadedAuth = (cac.auth && typeof cac.auth === "object") ? cac.auth : {};
+    state.customApiConfig.auth.type       = loadedAuth.type       || "none";
+    state.customApiConfig.auth.headerName = loadedAuth.headerName || "X-API-Key";
+    state.customApiConfig.auth.credential = ""; // never persisted
+    // schemaUrl
+    state.customApiConfig.schemaUrl = cac.schemaUrl || "";
+    // maxPages
+    state.customApiConfig.maxPages  = (typeof cac.maxPages === "number" && cac.maxPages >= 1)
+      ? Math.min(Math.floor(cac.maxPages), 25)
+      : 1;
+  } else {
+    state.customApiConfig.enabled          = false;
+    state.customApiConfig.baseUrl          = "";
+    state.customApiConfig.endpoint         = "";
+    state.customApiConfig.method           = "GET";
+    state.customApiConfig.auth.type        = "none";
+    state.customApiConfig.auth.credential  = "";
+    state.customApiConfig.auth.headerName  = "X-API-Key";
+    state.customApiConfig.headers     = [];
+    state.customApiConfig.queryParams = [];
+    state.customApiConfig.dataPath    = "";
+    state.customApiConfig.schemaUrl   = "";
+    state.customApiConfig.maxPages    = 1;
+  }
+
+  // ── Field Mapping ─────────────────────────────────────────────
+  const fm = topic.fieldMapping;
+  if (fm && typeof fm === "object") {
+    state.fieldMapping.nameField = fm.name || "";
+    // categories: stored as { catKey: fieldPath } in JSON → [{id, categoryName, fieldKey, transform}]
+    state.fieldMapping.categories = Object.entries(fm.categories || {})
+      .map(([categoryName, fieldKey]) => ({
+        id: makeId(),
+        categoryName,
+        fieldKey,
+        transform: (fm.transforms && fm.transforms[categoryName]) || "",
+      }));
+  } else {
+    state.fieldMapping.nameField  = "";
+    state.fieldMapping.categories = [];
+  }
+
+  // Reset transient API test state (sample keys from a previous topic)
+  if (typeof resetApiBuilderState === "function") resetApiBuilderState();
 
   onStateChange();
 }
@@ -547,6 +646,27 @@ function resetEditorToBlank() {
   state.apiConfig.apiKey   = "";
   state.apiConfig.leagues  = [];
   state.apiConfig.season   = new Date().getFullYear();
+
+  // ── Custom API Config ──
+  state.customApiConfig.enabled          = false;
+  state.customApiConfig.baseUrl          = "";
+  state.customApiConfig.endpoint         = "";
+  state.customApiConfig.method           = "GET";
+  state.customApiConfig.auth.type        = "none";
+  state.customApiConfig.auth.credential  = "";
+  state.customApiConfig.auth.headerName  = "X-API-Key";
+  state.customApiConfig.headers          = [];
+  state.customApiConfig.queryParams      = [];
+  state.customApiConfig.dataPath         = "";
+  state.customApiConfig.maxPages         = 1;
+  state.customApiConfig.schemaUrl        = "";
+
+  // ── Field Mapping ──
+  state.fieldMapping.nameField  = "";
+  state.fieldMapping.categories = [];
+
+  // Reset transient API test state
+  if (typeof resetApiBuilderState === "function") resetApiBuilderState();
 
   onStateChange();
 }
