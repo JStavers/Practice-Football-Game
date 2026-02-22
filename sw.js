@@ -14,7 +14,7 @@
 "use strict";
 
 /* ── Version — bump this string to invalidate the old cache ── */
-const CACHE_VERSION = "v1";
+const CACHE_VERSION = "v7";
 const CACHE_NAME    = `quiz-engine-${CACHE_VERSION}`;
 
 /* ── App Shell: files to pre-cache on install ─────────────── */
@@ -37,8 +37,6 @@ const APP_SHELL = [
   "./js/builder.js",
   "./js/builder-ui.js",
   "./js/builder-export.js",
-  "./js/apiBuilder.js",
-  "./js/script.js",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./manifest.json",
@@ -184,9 +182,9 @@ async function cacheFirstWithNetworkFallback(request) {  const cached = await ca
 
     return networkResponse;
   } catch {
-    // Fully offline and not cached — serve index.html as fallback
-    // so the app still "loads" even if the exact file isn't cached
+    // Fully offline and not cached — serve route-specific HTML fallback.
     if (request.mode === "navigate") {
+      const reqUrl = new URL(request.url);
       const fallback = await caches.match("./index.html");
       if (fallback) return fallback;
     }
@@ -210,3 +208,5 @@ self.addEventListener("message", (event) => {
     self.skipWaiting();
   }
 });
+
+

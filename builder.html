@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -42,23 +42,10 @@
         <span class="nav-item__icon">🏠</span> Home / Quiz
       </a>
     </div>
-
-    <!-- Create -->
     <div class="nav-section">
-      <span class="nav-section__label">Create</span>
+      <span class="nav-section__label">Configure</span>
       <a class="nav-item" href="builder.html">
-        <span class="nav-item__icon">🛠️</span> Topic Builder
-      </a>
-    </div>
-
-    <!-- Files -->
-    <div class="nav-section">
-      <span class="nav-section__label">Reference</span>
-      <a class="nav-item" href="data/topics.example.json" target="_blank" rel="noopener">
-        <span class="nav-item__icon">📄</span> Example JSON
-      </a>
-      <a class="nav-item" href="README.md" target="_blank" rel="noopener">
-        <span class="nav-item__icon">📖</span> README
+        <span class="nav-item__icon">🛠️</span> API Settings
       </a>
     </div>
 
@@ -75,40 +62,14 @@
 
     <!-- ── Page Header ──────────────────────────────────────────── -->
     <header class="builder-header">
-      <h1 class="builder-header__title">🛠️ Topic Builder</h1>
+      <h1 class="builder-header__title">Football API Settings</h1>
       <p class="builder-header__sub">
-        Create, edit, and save quiz topics. Pick an existing topic or start fresh.
+        Configure Football API settings only.
       </p>
     </header>
 
     <!-- ── Three-column layout: Topic List | Form | Preview ──── -->
     <div class="builder-layout">
-
-      <!-- ══ COLUMN 1: Saved Topics List ══════════════════════════ -->
-      <aside class="topic-list-panel" aria-label="Saved topics">
-
-        <div class="topic-list-panel__header">
-          <span class="topic-list-panel__title">My Topics</span>
-          <button id="new-topic-btn" class="btn btn--primary btn--sm" type="button"
-            title="Start a new blank topic">+ New</button>
-        </div>
-
-        <!-- Populated by builder-ui.js on load and after every save -->
-        <ul id="topic-list" class="topic-list" aria-label="Saved topics list">
-          <li class="topic-list__empty">No saved topics yet.</li>
-        </ul>
-
-        <!-- Import from JSON file -->
-        <div class="topic-list-panel__import">
-          <label class="btn btn--ghost btn--sm btn--full" for="import-file-input"
-            title="Import topics from a .json file">
-            📂 Import JSON
-          </label>
-          <input id="import-file-input" type="file" accept=".json"
-            style="display:none" aria-label="Import topics from JSON file" />
-        </div>
-
-      </aside>
 
       <!-- ══ COLUMN 2: Editor Form ══════════════════════════════════ -->
       <section class="builder-form" aria-label="Topic editor">
@@ -119,7 +80,7 @@
         </div>
 
         <!-- SECTION 1 – Topic Meta (collapsible) -->
-        <div class="form-section collapsible" id="section-meta">
+        <div class="form-section collapsible hidden" id="section-meta">
           <button class="section-toggle" aria-expanded="true"
             aria-controls="section-meta-body" type="button">
             <span>1 · Topic Info</span>
@@ -177,7 +138,7 @@
         </div>
 
         <!-- SECTION 2 – Categories (collapsible) -->
-        <div class="form-section collapsible" id="section-categories">
+        <div class="form-section collapsible hidden" id="section-categories">
           <button class="section-toggle" aria-expanded="true"
             aria-controls="section-categories-body" type="button">
             <span>2 · Categories</span>
@@ -200,7 +161,7 @@
         </div>
 
         <!-- SECTION 3 – Difficulty Weights (collapsible, starts collapsed) -->
-        <div class="form-section collapsible" id="section-weights">
+        <div class="form-section collapsible hidden" id="section-weights">
           <button class="section-toggle" aria-expanded="false"
             aria-controls="section-weights-body" type="button">
             <span>3 · Difficulty Weights <span class="optional">(optional)</span></span>
@@ -223,7 +184,7 @@
         </div>
 
         <!-- SECTION 4 – Data Items (collapsible) -->
-        <div class="form-section collapsible" id="section-items">
+        <div class="form-section collapsible hidden" id="section-items">
           <button class="section-toggle" aria-expanded="true"
             aria-controls="section-items-body" type="button">
             <span>4 · Data Items</span>
@@ -282,7 +243,7 @@
                 <div>
                   <label class="form-label" for="api-season">Season</label>
                   <input id="api-season" class="form-input" type="number"
-                    min="2000" max="2099" placeholder="e.g. 2024" autocomplete="off" />
+                    min="2000" max="2024" placeholder="e.g. 2024" autocomplete="off" />
                 </div>
               </div>
 
@@ -316,256 +277,11 @@
           </div>
         </div>
 
-        <!-- SECTION 6 – Custom API Builder (collapsible, starts collapsed) -->
-        <div class="form-section collapsible" id="section-custom-api">
-          <button class="section-toggle" aria-expanded="false"
-            aria-controls="section-custom-api-body" type="button">
-            <span>6 · Custom API Builder <span class="optional">(optional)</span></span>
-            <span class="section-toggle__arrow">▾</span>
-          </button>
-          <div class="section-body section-body--collapsed" id="section-custom-api-body">
-
-            <p class="form-hint">
-              Connect this topic to <strong>any REST API</strong>.
-              The quiz engine will fetch and normalize live data
-              automatically using the configuration below.
-            </p>
-
-            <!-- Enable toggle -->
-            <div class="form-row form-row--toggle">
-              <label class="toggle-label" for="custom-api-enabled">
-                <input id="custom-api-enabled" type="checkbox" class="toggle-checkbox" />
-                <span class="toggle-switch" aria-hidden="true"></span>
-                Enable Custom API fetch
-              </label>
-            </div>
-
-            <!-- Hidden until toggled on -->
-            <div id="custom-api-fields" class="hidden">
-
-              <!-- Base URL -->
-              <div class="form-row">
-                <label class="form-label" for="custom-api-base-url">
-                  Base URL <span class="required">*</span>
-                </label>
-                <input id="custom-api-base-url" class="form-input" type="url"
-                  placeholder="https://api.example.com" autocomplete="off" />
-              </div>
-
-              <!-- Endpoint + Method -->
-              <div class="form-row form-row--two">
-                <div>
-                  <label class="form-label" for="custom-api-endpoint">Endpoint</label>
-                  <input id="custom-api-endpoint" class="form-input" type="text"
-                    placeholder="/v1/players" autocomplete="off" />
-                </div>
-                <div>
-                  <label class="form-label" for="custom-api-method">Method</label>
-                  <select id="custom-api-method" class="form-select">
-                    <option value="GET">GET</option>
-                    <option value="POST">POST</option>
-                  </select>
-                </div>
-              </div>
-
-              <!-- Authorization -->
-              <div class="form-row">
-                <label class="form-label">Authorization</label>
-                <div class="auth-block">
-
-                  <!-- Type row -->
-                  <div class="auth-type-row">
-                    <label class="form-label form-label--inline" for="custom-api-auth-type">
-                      Type
-                    </label>
-                    <select id="custom-api-auth-type" class="form-select auth-type-select">
-                      <option value="none">None</option>
-                      <option value="bearer">Bearer Token</option>
-                      <option value="basic">Basic Auth (user:pass)</option>
-                      <option value="apikey">API Key (custom header)</option>
-                    </select>
-                  </div>
-
-                  <!-- Credential row (hidden when type = none) -->
-                  <div id="auth-credential-row" class="auth-credential-row hidden">
-                    <div id="auth-credential-bearer" class="auth-sub hidden">
-                      <label class="form-label form-label--inline" for="custom-api-auth-credential-bearer">
-                        Token
-                      </label>
-                      <input id="custom-api-auth-credential-bearer" class="form-input"
-                        type="password" placeholder="your-bearer-token"
-                        autocomplete="off" />
-                    </div>
-                    <div id="auth-credential-basic" class="auth-sub hidden">
-                      <label class="form-label form-label--inline" for="custom-api-auth-credential-basic">
-                        Credentials
-                      </label>
-                      <input id="custom-api-auth-credential-basic" class="form-input"
-                        type="password" placeholder="username:password"
-                        autocomplete="off" />
-                    </div>
-                    <div id="auth-credential-apikey" class="auth-sub hidden">
-                      <div class="form-row--two">
-                        <div>
-                          <label class="form-label form-label--inline" for="custom-api-auth-header-name">
-                            Header Name
-                          </label>
-                          <input id="custom-api-auth-header-name" class="form-input"
-                            type="text" placeholder="X-API-Key"
-                            autocomplete="off" />
-                        </div>
-                        <div>
-                          <label class="form-label form-label--inline" for="custom-api-auth-credential-apikey">
-                            Key Value
-                          </label>
-                          <input id="custom-api-auth-credential-apikey" class="form-input"
-                            type="password" placeholder="your-api-key"
-                            autocomplete="off" />
-                        </div>
-                      </div>
-                    </div>
-                  </div><!-- /#auth-credential-row -->
-
-                </div><!-- /.auth-block -->
-                <p class="form-hint">
-                  Credentials are session-only and are <strong>not</strong> saved
-                  into the exported JSON file.
-                </p>
-              </div>
-
-              <!-- Headers editor -->
-              <div class="form-row">
-                <label class="form-label">Additional Request Headers</label>
-                <div id="custom-api-headers" class="kv-editor"></div>
-                <button id="add-header-btn" class="btn btn--ghost btn--sm" type="button">
-                  + Add Header
-                </button>
-              </div>
-
-              <!-- Query params editor -->
-              <div class="form-row">
-                <label class="form-label">Query Parameters</label>
-                <div id="custom-api-params" class="kv-editor"></div>
-                <button id="add-param-btn" class="btn btn--ghost btn--sm" type="button">
-                  + Add Parameter
-                </button>
-              </div>
-
-              <!-- Data path -->
-              <div class="form-row">
-                <label class="form-label" for="custom-api-data-path">Data Path</label>
-                <input id="custom-api-data-path" class="form-input" type="text"
-                  placeholder="e.g. response &nbsp;or&nbsp; data.players" autocomplete="off" />
-                <p class="form-hint">
-                  Dot-notation path to the array inside the JSON response.
-                  Leave empty if the root is already an array.
-                  For TMDB: use <code>results</code>.
-                </p>
-              </div>
-
-              <!-- Max Pages (pagination) -->
-              <div class="form-row">
-                <label class="form-label" for="custom-api-max-pages">
-                  Max Pages
-                  <span class="badge badge--optional">optional</span>
-                </label>
-                <input id="custom-api-max-pages" class="form-input form-input--short"
-                  type="number" min="1" max="25" step="1"
-                  placeholder="1" autocomplete="off" />
-                <p class="form-hint">
-                  For paginated APIs like TMDB, set this to auto-fetch multiple pages
-                  (adds <code>?page=N</code> to each request). TMDB returns 20 movies per
-                  page — e.g. set to <strong>5</strong> for ~100 movies, <strong>25</strong>
-                  for ~500. Leave at <strong>1</strong> for non-paginated APIs.
-                </p>
-              </div>
-
-              <!-- Schema / Discovery URL -->
-              <div class="form-row">
-                <label class="form-label" for="custom-api-schema-url">
-                  Schema / Sample URL
-                  <span class="badge badge--optional">optional</span>
-                </label>
-                <input id="custom-api-schema-url" class="form-input" type="url"
-                  placeholder="https://api.example.com/v1/players?limit=1"
-                  autocomplete="off" />
-                <p class="form-hint">
-                  If set, the <em>Test</em> button fetches from this URL instead of
-                  Base URL + Endpoint — useful when your discovery endpoint differs
-                  from the live data endpoint. Leave empty to use Base URL + Endpoint.
-                </p>
-              </div>
-
-              <!-- Test button -->
-              <div class="form-row">
-                <button id="test-api-btn" class="btn btn--primary" type="button">
-                  🔍 Test API &amp; Load Sample
-                </button>
-              </div>
-
-              <!-- Test output (shown after clicking the button) -->
-              <div id="api-test-output" class="api-test-output hidden">
-                <div id="api-test-status" class="api-test-status"></div>
-                <div id="api-sample-preview" class="api-sample-preview hidden">
-                  <p class="form-hint">First 5 items from the response:</p>
-                  <pre id="api-sample-json" class="api-sample-json"></pre>
-                </div>
-              </div>
-
-              <!-- Field Mapping (shown after a successful test) -->
-              <div id="field-mapping-section" class="hidden">
-                <hr class="section-divider" />
-                <h4 class="subsection-title">🗺️ Field Mapping</h4>
-                <p class="form-hint">
-                  Choose which API fields map to the item name and each quiz category.
-                  Run a test first to see the available field paths.
-                </p>
-
-                <!-- Name field -->
-                <div class="form-row">
-                  <label class="form-label" for="mapping-name-field">
-                    Item Name field <span class="required">*</span>
-                  </label>
-                  <select id="mapping-name-field" class="form-select">
-                    <option value="">— run a test to see available fields —</option>
-                  </select>
-                  <p class="form-hint">
-                    The API field whose value will be shown as the answer
-                    (e.g. "player.name").
-                  </p>
-                </div>
-
-                <!-- Category mappings -->
-                <div class="form-row">
-                  <label class="form-label">Category Mappings</label>
-                  <p class="form-hint">
-                    Each row maps one quiz category to an API field path.
-                    The category name you type here will become the attribute
-                    key in the exported JSON (e.g. "Position" → "position").
-                  </p>
-                  <div id="mapping-categories" class="mapping-categories"></div>
-                  <button id="add-mapping-category-btn"
-                    class="btn btn--ghost btn--sm" type="button">
-                    + Add Category Mapping
-                  </button>
-                </div>
-
-              </div><!-- /#field-mapping-section -->
-
-            </div><!-- /#custom-api-fields -->
-
-          </div>
-        </div><!-- #section-custom-api -->
-
         <!-- Save / Delete action bar -->
 
         <div class="editor-actions">
           <button id="save-topic-btn" class="btn btn--success" type="button">
             💾 Save Topic
-          </button>
-          <button id="delete-topic-btn" class="btn btn--danger btn--sm" type="button"
-            title="Delete this topic from saved topics">
-            🗑️ Delete
           </button>
         </div>
 
@@ -575,7 +291,7 @@
       </section><!-- /.builder-form -->
 
       <!-- ══ COLUMN 3: Live JSON Preview ══════════════════════════ -->
-      <aside class="builder-preview" aria-label="Live JSON preview">
+      <aside class="builder-preview hidden" aria-label="Live JSON preview">
 
         <!-- Collapsible preview header -->
         <div class="preview-header">
@@ -606,13 +322,8 @@
   </div><!-- /.builder-app -->
 
   <!-- ── Scripts (load order matters) ─────────────────────────── -->
-  <script src="js/api.js"></script>
   <script src="js/topics.js"></script>
-  <!-- New modules: pure utilities first, then UI extension -->
-  <script src="js/mappingEngine.js"></script>
-  <script src="js/topicStorage.js"></script>
   <script src="js/builder.js"></script>
-  <script src="js/apiBuilder.js"></script>
   <script src="js/builder-ui.js"></script>
   <script src="js/builder-export.js"></script>
   <script src="js/nav.js"></script>
@@ -620,3 +331,6 @@
   </div><!-- /.page-content -->
 </body>
 </html>
+
+
+

@@ -8,24 +8,22 @@
 // TOPIC SWITCHER
 // ──────────────────────────────────────────────
 
+/** Football-only mode: always run the Football topic. */
+const SINGLE_TOPIC_KEY = "Football";
+
 /**
- * Switch the active topic and restart the game.
- * The API key is read directly from the topic's saved apiConfig — no
- * separate key store needed.
- *
- * @param {string} topicKey — must be a key in TOPICS (topics.js)
+ * Restart the game in Football-only mode.
  */
-async function setTopicAndRestart(topicKey) {
+async function setTopicAndRestart() {
   ui.hideGameOver();
   ui.showLoading(true, "Loading…");
 
   // setTopic merges the builder-saved override (including apiConfig.apiKey)
-  await setTopic(topicKey);
+  await setTopic(SINGLE_TOPIC_KEY);
 
   ui.showLoading(false);
 
   ui.applyTopicUI(state.topic);
-  ui.renderTopicSelect(topicKey);
   ui.updateStatusBar(state.items.length, state.isLiveData);
 
   const ts = getTopicCacheTimestamp(state.topic.topicKey);
@@ -98,19 +96,12 @@ ui.dom.answerForm.addEventListener("submit", (e) => {
 if (ui.dom.playAgainBtn) {
   ui.dom.playAgainBtn.addEventListener("click", () => {
     ui.hideGameOver();
-    setTopicAndRestart(state.topic.topicKey);
+    setTopicAndRestart();
   });
 }
 
 if (ui.dom.apiRefreshBtn) {
   ui.dom.apiRefreshBtn.addEventListener("click", handleApiRefresh);
-}
-
-// Topic switcher dropdown
-if (ui.dom.topicSelect) {
-  ui.dom.topicSelect.addEventListener("change", (e) => {
-    setTopicAndRestart(e.target.value);
-  });
 }
 
 // Autocomplete: input (debounced filter)
@@ -144,10 +135,6 @@ document.addEventListener("click", (e) => {
   state.highScore = loadHighScore();
   ui.updateHighScore(state.highScore);
 
-  ui.renderTopicSelect("Football");
   ui.renderUsedNames(state.usedNames);
-
-  // Restore the last-used topic (key lives in the builder-saved apiConfig)
-  const savedTopic = lsGet(CONFIG.LS_TOPIC) || "Football";
-  await setTopicAndRestart(savedTopic);
+  await setTopicAndRestart();
 })();

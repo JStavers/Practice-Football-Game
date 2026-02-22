@@ -1018,3 +1018,11 @@ button {
 .sidebar__footer .pwa-cache-btn {
   margin-top: 10px;
 }
+
+.storage-debug {
+  margin: 8px 0 10px;
+  color: var(--clr-text-muted);
+  font-size: 0.72rem;
+  letter-spacing: 0.01em;
+  opacity: 0.9;
+}

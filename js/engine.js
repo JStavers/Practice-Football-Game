@@ -14,6 +14,36 @@
  * Set to `false` before sharing or deploying.
  */
 const DEV_MODE = true;
+const ENGINE_BUILD = "20260221d";
+const MAX_FOOTBALL_SEASON = 2024;
+
+/**
+ * Return the API-Football season start year for "now".
+ * Example: Feb 2026 -> 2025, Aug 2026 -> 2026.
+ * @param {Date} [now]
+ * @returns {number}
+ */
+function getDefaultFootballSeason(now = new Date()) {
+  const year = now.getFullYear();
+  const inferred = now.getMonth() >= 6 ? year : year - 1;
+  return Math.min(inferred, MAX_FOOTBALL_SEASON);
+}
+
+/**
+ * Parse/sanitize a season value into a valid 4-digit season year.
+ * @param {unknown} value
+ * @param {number} [fallback]
+ * @returns {number}
+ */
+function normalizeFootballSeason(value, fallback = getDefaultFootballSeason()) {
+  const season = Number.parseInt(value, 10);
+  if (!Number.isFinite(season) || season < 2000) {
+    return fallback;
+  }
+  return Math.min(season, MAX_FOOTBALL_SEASON);
+}
+
+const DEFAULT_FOOTBALL_SEASON = getDefaultFootballSeason();
 
 // ──────────────────────────────────────────────
 // GLOBAL CONFIG
@@ -31,12 +61,12 @@ const CONFIG = {
    * WITHOUT an apiConfig (legacy fallback — keeps backward compatibility).
    */
   LEAGUES_TO_FETCH: [
-    { id: 39,  season: 2024, name: "Premier League" },
-    { id: 140, season: 2024, name: "La Liga" },
-    { id: 135, season: 2024, name: "Serie A" },
-    { id: 78,  season: 2024, name: "Bundesliga" },
-    { id: 61,  season: 2024, name: "Ligue 1" },
-    { id: 253, season: 2024, name: "MLS" },
+    { id: 39,  season: DEFAULT_FOOTBALL_SEASON, name: "Premier League" },
+    { id: 140, season: DEFAULT_FOOTBALL_SEASON, name: "La Liga" },
+    { id: 135, season: DEFAULT_FOOTBALL_SEASON, name: "Serie A" },
+    { id: 78,  season: DEFAULT_FOOTBALL_SEASON, name: "Bundesliga" },
+    { id: 61,  season: DEFAULT_FOOTBALL_SEASON, name: "Ligue 1" },
+    { id: 253, season: DEFAULT_FOOTBALL_SEASON, name: "MLS" },
   ],
 
   /** Max pages per league fetch */
@@ -190,7 +220,17 @@ function lsGet(key) {
 
 /** Safe localStorage set. */
 function lsSet(key, value) {
-  try { localStorage.setItem(key, value); } catch { /* quota blocked */ }
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Safe localStorage remove. */
+function lsRemove(key) {
+  try { localStorage.removeItem(key); } catch { /* blocked */ }
 }
 
 // ──────────────────────────────────────────────
@@ -432,8 +472,8 @@ function validateTopicJSON(raw, idx = 0) {
           });
         }
       }
-      if (ac.season !== undefined && (typeof ac.season !== "number" || ac.season < 2000 || ac.season > 2099)) {
-        errors.push(`${prefix}: apiConfig.season must be a number between 2000 and 2099.`);
+      if (ac.season !== undefined && (typeof ac.season !== "number" || ac.season < 2000 || ac.season > MAX_FOOTBALL_SEASON)) {
+        errors.push(`${prefix}: apiConfig.season must be a number between 2000 and ${MAX_FOOTBALL_SEASON}.`);
       }
     }
   }
@@ -773,16 +813,20 @@ function handleSubmit(answer) {
 
   if (matchedRound) {
     // Correct
-    const pts = calcRoundPoints(matchedRound);
-    state.score += pts;
+    const pts = Number(calcRoundPoints(matchedRound)) || 0;
+    const currentScore = Number(state.score) || 0;
+    state.score = currentScore + pts;
     ui.updateScore(state.score);
     const combinedMulti = Math.round((DEPTH_BONUS[matchedRound.rowIndex] || 1) * (matchedRound.extraBonus || 1) * 10) / 10;
     ui.showFeedback(
       `✅ Correct! +${pts} points (${combinedMulti}× multiplier)`,
       "correct"
     );
+    const bestNow = Math.max(Number(state.highScore) || 0, Number(state.score) || 0);
+    state.highScore = bestNow;
+    ui.updateHighScore(bestNow);
+    saveHighScore(bestNow);
     markNameUsed(answer);
-    updateHighScore();
     removeRound(matchedRound.id);
     pushNewRound();
     ui.resetInput();
@@ -818,8 +862,11 @@ function handleSubmit(answer) {
 function endGame() {
   ui.setInputEnabled(false);
   ui.clearFeedback();
-  updateHighScore();
-  ui.showGameOver(state.score, state.highScore);
+  const best = Math.max(Number(state.highScore) || 0, Number(state.score) || 0);
+  state.highScore = best;
+  ui.updateHighScore(best);
+  saveHighScore(best);
+  ui.showGameOver(state.score, best);
 }
 
 // ──────────────────────────────────────────────
@@ -836,20 +883,48 @@ function markNameUsed(displayName) {
 // ──────────────────────────────────────────────
 
 function loadHighScore() {
-  const saved = lsGet(CONFIG.LS_HIGH_SCORE);
-  return saved ? parseInt(saved, 10) : 0;
+  const keyA = lsGet(CONFIG.LS_HIGH_SCORE) ?? "";
+  const keyB = lsGet("footballQuizHighScore") ?? "";
+  const parsed = Number.parseInt(keyA, 10);
+  const best = Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+
+  // Ignore and clear stale legacy score key so it cannot override current logic.
+  if (keyB !== "") {
+    lsRemove("footballQuizHighScore");
+  }
+
+  if (typeof ui !== "undefined" && typeof ui.updateStorageDebug === "function") {
+    ui.updateStorageDebug(
+      `debug storage [build=${ENGINE_BUILD}]: ${CONFIG.LS_HIGH_SCORE}="${keyA}" | footballQuizHighScore="${keyB}" | computedBest=${best}`
+    );
+  }
+  return best;
 }
 
 function saveHighScore(score) {
-  lsSet(CONFIG.LS_HIGH_SCORE, score.toString());
+  const safeScore = Number.isFinite(score) ? Math.max(0, Math.floor(score)) : 0;
+  const wrote = lsSet(CONFIG.LS_HIGH_SCORE, safeScore.toString());
+  const readBack = lsGet(CONFIG.LS_HIGH_SCORE) ?? "";
+  const clearedLegacy = (lsRemove("footballQuizHighScore"), (lsGet("footballQuizHighScore") ?? "") === "");
+  const debugText =
+    `debug storage write [build=${ENGINE_BUILD}]: target="${safeScore}" | wrote=${wrote} | readBack="${readBack}" | legacyCleared=${clearedLegacy}`;
+  if (typeof ui !== "undefined" && typeof ui.updateStorageDebug === "function") {
+    ui.updateStorageDebug(debugText);
+  }
+  const dbgEl = document.getElementById("storage-debug");
+  if (dbgEl) dbgEl.textContent = debugText;
 }
 
 function updateHighScore() {
-  if (state.score > state.highScore) {
-    state.highScore = state.score;
-    ui.updateHighScore(state.highScore);
-    saveHighScore(state.highScore);
-  }
+  const currentScore = Number(state.score) || 0;
+  const inMemoryBest = Number(state.highScore) || 0;
+  const bestAfter = Math.max(inMemoryBest, currentScore);
+
+  state.highScore = bestAfter;
+  ui.updateHighScore(bestAfter);
+  saveHighScore(bestAfter);
+
+  return bestAfter;
 }
 
 // ──────────────────────────────────────────────
@@ -1009,7 +1084,7 @@ async function fetchFootballPlayers(apiKey) {
 function buildCacheSig(ac) {
   if (!ac || !Array.isArray(ac.leagues)) return "";
   const ids = [...ac.leagues].sort((a, b) => a - b).join(",");
-  return `${ac.season || 2024}:${ids}`;
+  return `${normalizeFootballSeason(ac.season, DEFAULT_FOOTBALL_SEASON)}:${ids}`;
 }
 
 function cacheTopicItems(topicKey, items, ac) {
@@ -1303,43 +1378,71 @@ async function fetchCustomApiTopicData(topic) {
  * @returns {Promise<object[]>}
  */
 async function fetchTopicViaApiFootball(topic, ac, apiKey) {
-  // Resolve leagues to fetch
+  const fetchAllLeagues = async (leagues) => {
+    const all = [];
+
+    for (let i = 0; i < leagues.length; i++) {
+      const lg = leagues[i];
+      ui.setLoadingText(`Fetching ${lg.name}… (${i + 1}/${leagues.length})`);
+
+      try {
+        const players = await fetchLeaguePlayers(apiKey, lg.id, lg.season, lg.name);
+        all.push(...players);
+      } catch (err) {
+        console.error(`[Engine] Failed to fetch league ${lg.id}:`, err);
+      }
+    }
+
+    const seen = new Set();
+    return all.filter((p) => {
+      if (seen.has(p.searchName)) return false;
+      seen.add(p.searchName);
+      return true;
+    });
+  };
+
+  // Resolve leagues to fetch.
   let leagues;
+  let requestedSeason = DEFAULT_FOOTBALL_SEASON;
 
   if (ac && Array.isArray(ac.leagues) && ac.leagues.length > 0) {
-    // Use the per-topic league list from apiConfig
-    const season = ac.season || 2024;
+    requestedSeason = normalizeFootballSeason(ac.season, DEFAULT_FOOTBALL_SEASON);
     leagues = ac.leagues.map((id) => ({
       id,
-      season,
+      season: requestedSeason,
       name: (typeof getLeagueName === "function" ? getLeagueName(id) : null) || `League ${id}`,
     }));
   } else {
-    // Legacy Football topic — use the hardcoded CONFIG list
     leagues = CONFIG.LEAGUES_TO_FETCH;
   }
 
-  const all = [];
+  const primary = await fetchAllLeagues(leagues);
+  if (primary.length > 0) {
+    return primary;
+  }
 
-  for (let i = 0; i < leagues.length; i++) {
-    const lg = leagues[i];
-    ui.setLoadingText(`Fetching ${lg.name}… (${i + 1}/${leagues.length})`);
+  // Recovery path: when a configured season has no data, retry previous season once.
+  if (ac && Array.isArray(ac.leagues) && ac.leagues.length > 0 && requestedSeason > 2000) {
+    const fallbackSeason = requestedSeason - 1;
+    ui.setLoadingText(`No players for ${requestedSeason}. Retrying ${fallbackSeason}…`);
 
-    try {
-      const players = await fetchLeaguePlayers(apiKey, lg.id, lg.season, lg.name);
-      all.push(...players);
-    } catch (err) {
-      console.error(`[Engine] Failed to fetch league ${lg.id}:`, err);
+    const retryLeagues = ac.leagues.map((id) => ({
+      id,
+      season: fallbackSeason,
+      name: (typeof getLeagueName === "function" ? getLeagueName(id) : null) || `League ${id}`,
+    }));
+
+    const retry = await fetchAllLeagues(retryLeagues);
+    if (retry.length > 0) {
+      ac.season = fallbackSeason;
+      console.warn(
+        `[Engine] API-Football season ${requestedSeason} returned no data; using ${fallbackSeason} instead.`
+      );
+      return retry;
     }
   }
 
-  // De-duplicate by searchName
-  const seen = new Set();
-  return all.filter((p) => {
-    if (seen.has(p.searchName)) return false;
-    seen.add(p.searchName);
-    return true;
-  });
+  return [];
 }
 
 // ──────────────────────────────────────────────

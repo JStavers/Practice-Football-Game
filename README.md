@@ -1,91 +1,97 @@
-# ⚽ Football Quiz Web App
+# Practice Football Game
 
-A mobile-friendly quiz game where you match footballers to randomly generated modifiers — **Position**, **League**, and **Country**.
+Football-only quiz app with live API-Football data and Android support via Capacitor.
 
-## How to Play
+## Current Scope
 
-1. Three modifiers appear on screen (e.g. *Striker · Premier League · Brazil*).
-2. Type the name of a real footballer who fits **all three**.
-3. Harder modifier combos award more points!
-4. Click **New Round** to get a fresh set of modifiers.
+- Single topic only: `Football`
+- Season input is capped at `2024` maximum
+- Android build + install flow supported
 
 ## Project Structure
 
-```
-├── index.html   — Page markup
-├── styles.css   — Mobile-first responsive styles
-├── script.js    — Game logic, data & event handling
-└── .github/
-    └── copilot-instructions.md
-```
+- `index.html` - app shell
+- `js/main.js` - app bootstrap and event wiring
+- `js/engine.js` - game engine, API fetch, caching
+- `js/ui.js` - rendering layer
+- `js/topics.js` - Football topic definition
+- `builder.html` + `js/builder*.js` - topic/API config builder
+- `scripts/init-android.js` - Android bootstrap for missing `android/`
 
-## Running the App
-
-This is a **static site** — no build step required.
-
-- **Option A** – Open `index.html` directly in a browser.
-- **Option B** – Use the VS Code **Live Server** extension:
-  1. Install the *Live Server* extension (`ritwickdey.liveserver`).
-  2. Right-click `index.html` → **Open with Live Server**.
-
-## Tech Stack
-
-- HTML5, CSS3, vanilla JavaScript (ES6+)
-- No frameworks, no CDNs, no dependencies
-
-## Expanding the Quiz
-
-The `VALID_ANSWERS` object in `script.js` maps each modifier combination to accepted player names. To add more content, simply add new entries:
-
-```js
-"position|league|country": ["player name 1", "player name 2"],
-```
-
-All keys and values should be **lowercase**.
-
-
-## Android App (Capacitor)
-
-This branch includes Capacitor Android support. If your checkout does **not** have an `android/` folder (for example, older clones/branches), run:
-
-```bash
-npm run android:init
-```
-
-That command creates `android/` (if missing) and syncs the current web app into it.
-
-### One-time setup
+## Local Setup
 
 ```bash
 npm install
-npm run sync
 ```
 
-### First-time one-command setup (safe to re-run)
+## Configure Live Football API
+
+1. Open `builder.html`
+2. In **Section 5 · Live API Fetch**:
+   - Enable live data
+   - Provider: `API-Football`
+   - Add your API key
+   - Add league IDs (example: `39,140,135,78,61,253`)
+   - Set season (`2000` to `2024`)
+3. Click **Save Topic**
+4. Open the quiz and click **Refresh**
+
+## Android Commands
+
+From repo root:
 
 ```bash
 npm run android:init
-```
-
-### Open in Android Studio
-
-```bash
+npm run sync
 npm run open
 ```
 
-### Build APK from CLI
+Build debug APK from CLI:
 
 ```bash
-cd android
-./gradlew assembleDebug
+npm run android:apk
 ```
 
-Debug APK output:
+APK output:
 
 `android/app/build/outputs/apk/debug/app-debug.apk`
 
-Whenever you change web assets (`index.html`, `css/`, `js/`, etc.), run:
+## Install On Your Phone (Android)
+
+### Option A - USB install with ADB (fastest)
+
+1. On phone:
+   - Enable **Developer options**
+   - Enable **USB debugging**
+2. Connect phone to PC with USB and accept trust prompt
+3. Verify device:
+
+```bash
+adb devices
+```
+
+4. Install APK:
+
+```bash
+adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+### Option B - Manual APK transfer
+
+1. Copy `android/app/build/outputs/apk/debug/app-debug.apk` to phone
+2. Open APK on phone
+3. Allow installs from unknown apps for your file manager/browser
+4. Install
+
+## Update Cycle After Code Changes
 
 ```bash
 npm run sync
+npm run android:apk
+```
+
+Reinstall with:
+
+```bash
+adb install -r android/app/build/outputs/apk/debug/app-debug.apk
 ```

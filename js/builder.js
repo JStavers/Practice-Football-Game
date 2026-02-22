@@ -8,6 +8,33 @@
    ============================================================ */
 
 "use strict";
+const MAX_FOOTBALL_SEASON = 2024;
+
+/**
+ * Return the API-Football season start year for "now".
+ * Example: Feb 2026 -> 2025, Aug 2026 -> 2026.
+ * @param {Date} [now]
+ * @returns {number}
+ */
+function getDefaultFootballSeason(now = new Date()) {
+  const year = now.getFullYear();
+  const inferred = now.getMonth() >= 6 ? year : year - 1;
+  return Math.min(inferred, MAX_FOOTBALL_SEASON);
+}
+
+/**
+ * Parse/sanitize a season value into a valid 4-digit season year.
+ * @param {unknown} value
+ * @param {number} [fallback]
+ * @returns {number}
+ */
+function normalizeFootballSeason(value, fallback = getDefaultFootballSeason()) {
+  const season = Number.parseInt(value, 10);
+  if (!Number.isFinite(season) || season < 2000) {
+    return fallback;
+  }
+  return Math.min(season, MAX_FOOTBALL_SEASON);
+}
 
 /* ── State ──────────────────────────────────────────────────────
    The entire builder state lives here. builder-ui.js reads it
@@ -35,7 +62,7 @@ const state = {
     provider: "API-Football",
     apiKey:   "",
     leagues:  [],          // array of numeric league IDs e.g. [39, 140]
-    season:   2024,
+    season:   getDefaultFootballSeason(),
   },
 
   /* ── Categories ──
@@ -335,7 +362,7 @@ function updateApiConfig(field, value) {
         .filter(n => !isNaN(n) && n > 0);
     }
   } else if (field === "season") {
-    state.apiConfig.season = parseInt(value, 10) || 2024;
+    state.apiConfig.season = normalizeFootballSeason(value, getDefaultFootballSeason());
   } else if (field === "enabled") {
     state.apiConfig.enabled = Boolean(value);
   } else {
@@ -553,13 +580,13 @@ function loadTopicIntoEditor(topic) {
     state.apiConfig.provider = ac2.provider || "API-Football";
     state.apiConfig.apiKey   = ac2.apiKey   || "";
     state.apiConfig.leagues  = Array.isArray(ac2.leagues) ? [...ac2.leagues] : [];
-    state.apiConfig.season   = ac2.season   || 2024;
+    state.apiConfig.season   = normalizeFootballSeason(ac2.season, getDefaultFootballSeason());
   } else {
     state.apiConfig.enabled  = false;
     state.apiConfig.provider = "API-Football";
     state.apiConfig.apiKey   = "";
     state.apiConfig.leagues  = [];
-    state.apiConfig.season   = new Date().getFullYear();
+    state.apiConfig.season   = getDefaultFootballSeason();
   }
 
   // ── Custom API Config (Section 6) ────────────────────────────
@@ -645,7 +672,7 @@ function resetEditorToBlank() {
   state.apiConfig.provider = "API-Football";
   state.apiConfig.apiKey   = "";
   state.apiConfig.leagues  = [];
-  state.apiConfig.season   = new Date().getFullYear();
+  state.apiConfig.season   = getDefaultFootballSeason();
 
   // ── Custom API Config ──
   state.customApiConfig.enabled          = false;

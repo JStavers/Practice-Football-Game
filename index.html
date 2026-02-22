@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -21,7 +21,7 @@
   <!-- Prevent phone-number auto-detection on mobile -->
   <meta name="format-detection" content="telephone=no" />
   <!-- SEO / sharing -->
-  <meta name="description" content="Topic-based quiz game — Football, Movies, Geography and more." />
+  <meta name="description" content="Football quiz game with live API data." />
 
   <!-- ===== Styles ===== -->
   <!-- nav.css must load first — it resets body to flex-row layout -->
@@ -64,26 +64,12 @@
         <span class="nav-item__icon">🏠</span> Home / Quiz
       </a>
     </div>
-
-    <!-- Create -->
     <div class="nav-section">
-      <span class="nav-section__label">Create</span>
+      <span class="nav-section__label">Configure</span>
       <a class="nav-item" href="builder.html">
-        <span class="nav-item__icon">🛠️</span> Topic Builder
+        <span class="nav-item__icon">🛠️</span> API Settings
       </a>
     </div>
-
-    <!-- Files -->
-    <div class="nav-section">
-      <span class="nav-section__label">Reference</span>
-      <a class="nav-item" href="data/topics.example.json" target="_blank" rel="noopener">
-        <span class="nav-item__icon">📄</span> Example JSON
-      </a>
-      <a class="nav-item" href="README.md" target="_blank" rel="noopener">
-        <span class="nav-item__icon">📖</span> README
-      </a>
-    </div>
-
     <!-- PWA Controls in the sidebar footer -->
     <div class="sidebar__footer">
       <span id="pwa-version" class="sidebar__version">v2.0.0</span>
@@ -131,14 +117,6 @@
       </div>
     </header>
 
-    <!-- ===== Topic Switcher ===== -->
-    <div class="topic-switcher">
-      <label for="topic-select" class="topic-switcher__label">Topic:</label>
-      <select id="topic-select" class="topic-switcher__select">
-        <!-- Options are built dynamically by ui.js -->
-      </select>
-    </div>
-
     <!-- ===== Data-Source Status ===== -->
     <div class="data-status" id="data-status">
       <span id="status-text">Offline data</span>
@@ -153,6 +131,7 @@
     <div class="data-status__fetch-row" id="data-fetch-row">
       <span id="api-last-fetch"></span>
     </div>
+    <div class="storage-debug" id="storage-debug"></div>
 
     <!-- ===== Stacked Round Board ===== -->
     <section class="round-stack" id="round-stack">
@@ -222,22 +201,23 @@
   </div>
 
   <!-- Load order matters: topics → api → engine → ui → main -->
-  <script src="js/topics.js"></script>
-  <script src="js/api.js"></script>
+  <script src="js/topics.js?v=20260221d"></script>
+  <script src="js/api.js?v=20260221d"></script>
   <!-- Mapping + storage utilities (must load before engine.js) -->
-  <script src="js/mappingEngine.js"></script>
-  <script src="js/topicStorage.js"></script>
-  <script src="js/engine.js"></script>
-  <script src="js/ui.js"></script>
-  <script src="js/main.js"></script>
+  <script src="js/mappingEngine.js?v=20260221d"></script>
+  <script src="js/topicStorage.js?v=20260221d"></script>
+  <script src="js/engine.js?v=20260221d"></script>
+  <script src="js/ui.js?v=20260221d"></script>
+  <script src="js/main.js?v=20260221d"></script>
 
   <!-- Shared sidebar toggle — load last so all DOM is ready -->
-  <script src="js/nav.js"></script>
+  <script src="js/nav.js?v=20260221d"></script>
 
   <!-- PWA utilities: service worker registration, install prompt,
        cache-clear, update banner.  Must load after all other scripts. -->
-  <script src="js/pwa.js"></script>
+  <script src="js/pwa.js?v=20260221d"></script>
 
   </div><!-- /.page-content -->
 </body>
 </html>
+

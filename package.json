@@ -1,13 +1,14 @@
 {
   "name": "quiz-engine",
   "version": "2.0.0",
-  "description": "Topic-based quiz game — Football, Movies, Geography and more.",
+  "description": "Football quiz game with live API data and Android build support.",
   "private": true,
   "scripts": {
     "build": "node scripts/prepare-www.js",
     "sync": "npm run build && npx cap sync android",
     "open": "npx cap open android",
-    "android:init": "node scripts/init-android.js"
+    "android:init": "node scripts/init-android.js",
+    "android:apk": "cd android && gradlew.bat assembleDebug"
   },
   "dependencies": {
     "@capacitor/android": "^7.0.0",

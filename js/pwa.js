@@ -16,6 +16,9 @@
 
 /* ── App version — bump this to signal a new release ─────── */
 const APP_VERSION = "2.0.0";
+const IS_LOCAL_DEV_HOST =
+  window.location.hostname === "localhost" ||
+  window.location.hostname === "127.0.0.1";
 
 /* ── Stores the deferred install prompt event ────────────── */
 let _installPrompt = null;
@@ -35,6 +38,11 @@ let _installPrompt = null;
  *       and the app works normally without offline support.
  */
 async function registerServiceWorker() {
+  if (IS_LOCAL_DEV_HOST) {
+    console.log("[PWA] Local dev host detected. Skipping service worker registration.");
+    return;
+  }
+
   if (!("serviceWorker" in navigator)) {
     console.log("[PWA] Service workers are not supported in this browser.");
     return;
@@ -229,4 +237,9 @@ document.addEventListener("DOMContentLoaded", () => {
 /* ══════════════════════════════════════════════════════════
    7. KICK OFF — register the service worker immediately
    ══════════════════════════════════════════════════════════ */
+if (IS_LOCAL_DEV_HOST && "serviceWorker" in navigator) {
+  navigator.serviceWorker.getRegistrations().then((regs) => {
+    regs.forEach((reg) => reg.unregister());
+  });
+}
 registerServiceWorker();

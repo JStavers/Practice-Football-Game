@@ -1,4 +1,4 @@
-/* ============================================================
+﻿/* ============================================================
    builder-ui.js  —  All DOM rendering for the Topic Builder
    ============================================================
    Reads from `state` (defined in builder.js) and wires every
@@ -9,7 +9,7 @@
 
 "use strict";
 
-/* ── DOM references ─────────────────────────────────────────── */
+/* -- DOM references ------------------------------------------- */
 const dom = {
   /* Meta inputs */
   metaKey:          document.getElementById("meta-key"),
@@ -47,15 +47,8 @@ const dom = {
   apiSeason:        document.getElementById("api-season"),
   apiKey:           document.getElementById("api-key"),
   apiLeagues:       document.getElementById("api-leagues"),
-
-  /* Topic list sidebar */
-  topicList:        document.getElementById("topic-list"),
-  newTopicBtn:      document.getElementById("new-topic-btn"),
-  importFileInput:  document.getElementById("import-file-input"),
-
   /* Editor actions */
   saveTopicBtn:     document.getElementById("save-topic-btn"),
-  deleteTopicBtn:   document.getElementById("delete-topic-btn"),
 
   /* Dirty banner */
   dirtyBanner:      document.getElementById("dirty-banner"),
@@ -80,9 +73,7 @@ function render() {
   renderWeights();
   renderItemList();
   renderApiConfig();
-  renderCustomApiSection();   // Section 6 — Custom API Builder
   renderPreview();
-  renderTopicList();
 }
 
 // Wire the state change hook defined in builder.js to our render function.
@@ -91,6 +82,48 @@ onStateChange = () => {
   if (!_suppressDirty) markDirty();
   render();
 };
+
+/**
+ * Force Football-only builder mode and lock non-API fields.
+ */
+function bootstrapFootballOnlyMode() {
+  let footballTopic = null;
+
+  try {
+    const saved = loadSavedTopics();
+    if (Array.isArray(saved)) {
+      footballTopic = saved.find((t) => t && t.topicKey === "Football") || null;
+    }
+  } catch {
+    footballTopic = null;
+  }
+
+  if (!footballTopic && typeof TOPICS !== "undefined") {
+    footballTopic = TOPICS.Football || null;
+  }
+
+  if (footballTopic) {
+    _suppressDirty = true;
+    loadTopicIntoEditor(footballTopic);
+    _suppressDirty = false;
+    clearDirty();
+  }
+
+  const lock = (el) => {
+    if (!el) return;
+    el.readOnly = true;
+    el.disabled = true;
+  };
+
+  lock(dom.metaKey);
+  lock(dom.metaName);
+  lock(dom.metaIcon);
+  lock(dom.metaPlaceholder);
+  lock(dom.metaUsedLabel);
+  lock(dom.metaDesc);
+  lock(dom.metaDiffKey);
+}
+
 
 /* ============================================================
    META SYNC — write state values into inputs
@@ -116,86 +149,6 @@ function syncMetaInputs() {
     if (el && document.activeElement !== el) {
       el.value = val ?? "";
     }
-  });
-}
-
-/* ============================================================
-   TOPIC LIST SIDEBAR
-   ============================================================ */
-
-/**
- * Renders the saved topics list in the sidebar.
- * Built-in topics (from the TOPICS registry in topics.js) are shown
- * with a lock badge and no delete button — they can be loaded and
- * edited, but the edited version must be saved to persist.
- * User-saved topics (in localStorage) show a delete button.
- */
-function renderTopicList() {
-  const ul = dom.topicList;
-  if (!ul) return;
-
-  const topics = loadSavedTopics();
-  ul.innerHTML = "";
-
-  if (topics.length === 0) {
-    ul.innerHTML = `<li class="topic-list__empty">No topics yet.</li>`;
-    return;
-  }
-
-  // Keys that exist in the built-in TOPICS registry
-  const builtInKeys = (typeof TOPICS !== "undefined")
-    ? new Set(Object.keys(TOPICS))
-    : new Set();
-
-  // Keys the user has explicitly saved to localStorage
-  let savedKeys = new Set();
-  try {
-    const raw = localStorage.getItem(LS_BUILDER_TOPICS);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) parsed.forEach(t => savedKeys.add(t.topicKey));
-    }
-  } catch { /* ignore */ }
-
-  topics.forEach(topic => {
-    const isBuiltIn   = builtInKeys.has(topic.topicKey) && !savedKeys.has(topic.topicKey);
-    const isActive    = topic.topicKey === state.meta.topicKey && !_isDirty;
-
-    const li = document.createElement("li");
-    li.className = "topic-item" + (isActive ? " active" : "");
-
-    li.innerHTML = `
-      <span class="topic-item__icon">${escHtml(topic.icon || "📄")}</span>
-      <span class="topic-item__name">${escHtml(topic.topicName || topic.topicKey)}</span>
-      <button class="topic-item__delete" title="Delete topic">✕</button>
-    `;
-
-    // Load on row click (but not the delete/badge element)
-    li.addEventListener("click", e => {
-      if (e.target.classList.contains("topic-item__delete")) return;
-      if (_isDirty && !confirm("You have unsaved changes. Load this topic anyway?")) return;
-      _suppressDirty = true;
-      loadTopicIntoEditor(topic);
-      _suppressDirty = false;
-      clearDirty();
-    });
-
-    // Delete button — works for both built-in and user-saved topics
-    li.querySelector(".topic-item__delete").addEventListener("click", e => {
-      e.stopPropagation();
-      const label = isBuiltIn ? ` (built-in — can be restored by clearing site data)` : "";
-      if (!confirm(`Delete "${topic.topicName || topic.topicKey}"?${label}`)) return;
-      deleteSavedTopic(topic.topicKey);
-      if (state.meta.topicKey === topic.topicKey) {
-        _suppressDirty = true;
-        resetEditorToBlank();
-        _suppressDirty = false;
-        clearDirty();
-      }
-      renderTopicList();
-    });
-
-    ul.appendChild(li);
   });
 }
 
@@ -271,65 +224,6 @@ function initPreviewCollapse() {
       btn.setAttribute("aria-expanded", "true");
       preview.classList.remove("preview-collapsed");
     }
-  });
-}
-
-/* ============================================================
-   NEW TOPIC BUTTON
-   ============================================================ */
-
-if (dom.newTopicBtn) {
-  dom.newTopicBtn.addEventListener("click", () => {
-    if (_isDirty && !confirm("You have unsaved changes. Start a new topic anyway?")) return;
-    _suppressDirty = true;
-    resetEditorToBlank();
-    _suppressDirty = false;
-    clearDirty();
-  });
-}
-
-/* ============================================================
-   FILE IMPORT
-   ============================================================ */
-
-if (dom.importFileInput) {
-  dom.importFileInput.addEventListener("change", e => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = evt => {
-      try {
-        let parsed = JSON.parse(evt.target.result);
-
-        // Accept both a single object and an array of objects
-        if (!Array.isArray(parsed)) parsed = [parsed];
-
-        if (parsed.length === 0) {
-          showToast("❌ JSON file is empty.", "error");
-          return;
-        }
-
-        // Upsert all topics to storage
-        parsed.forEach(topic => {
-          if (topic && topic.topicKey) upsertTopic(topic);
-        });
-
-        // Load the first topic into the editor
-        _suppressDirty = true;
-        loadTopicIntoEditor(parsed[0]);
-        _suppressDirty = false;
-        clearDirty();
-        renderTopicList();
-
-        showToast(`✅ Imported ${parsed.length} topic${parsed.length > 1 ? "s" : ""}!`);
-      } catch (err) {
-        showToast(`❌ Invalid JSON: ${err.message}`, "error");
-      }
-      // Reset input so the same file can be re-imported
-      e.target.value = "";
-    };
-    reader.readAsText(file);
   });
 }
 
@@ -442,7 +336,7 @@ function createCategoryRow(cat, index) {
   li.draggable = true;
 
   li.innerHTML = `
-    <span class="drag-handle" title="Drag to reorder">⠿</span>
+    <span class="drag-handle" title="Drag to reorder">?</span>
     <input
       class="category-row__label-input"
       type="text"
@@ -451,7 +345,7 @@ function createCategoryRow(cat, index) {
       aria-label="Category label"
     />
     <span class="category-row__key">${escHtml(key) || "…"}</span>
-    <button class="btn btn--danger" title="Remove category" aria-label="Remove category">✕</button>
+    <button class="btn btn--danger" title="Remove category" aria-label="Remove category">?</button>
   `;
 
   // Label change
@@ -467,7 +361,7 @@ function createCategoryRow(cat, index) {
   return li;
 }
 
-/* ── Category drag-and-drop ─────────────────────────────────── */
+/* -- Category drag-and-drop ----------------------------------- */
 
 /** Tracks which item is being dragged. */
 let dragSrcIndex = null;
@@ -564,7 +458,7 @@ function createWeightRow(w) {
       value="${escHtml(w.multiplier)}"
       aria-label="Point multiplier"
     />
-    <button class="btn btn--danger" title="Remove weight" aria-label="Remove weight">✕</button>
+    <button class="btn btn--danger" title="Remove weight" aria-label="Remove weight">?</button>
   `;
 
   div.querySelector(".weight-row__value").addEventListener("input", e =>
@@ -600,7 +494,7 @@ function renderItemList() {
   if (state.items.length === 0) {
     if (state.apiConfig.enabled) {
       list.innerHTML = `<li class="form-hint" style="padding:8px 0;">
-        🔄 No cached API data yet — save the topic and click <strong>🔄 Refresh</strong>
+        ?? No cached API data yet — save the topic and click <strong>?? Refresh</strong>
         in the quiz to fetch live data. It will appear here next time you open the topic.</li>`;
     } else {
       list.innerHTML = `<li class="form-hint" style="padding:4px 0;">
@@ -613,7 +507,7 @@ function renderItemList() {
     const banner = document.createElement("li");
     banner.className = "form-hint";
     banner.style.cssText = "padding:8px 0; color: var(--clr-accent, #4ade80);";
-    banner.innerHTML = `✅ Showing <strong>${apiItems.length}</strong> players fetched from the API
+    banner.innerHTML = `? Showing <strong>${apiItems.length}</strong> players fetched from the API
       (read-only — managed by the live data config above).`;
     list.appendChild(banner);
   }
@@ -668,19 +562,19 @@ function createItemCard(item, index) {
   li.dataset.index = index;
   li.draggable = true;
 
-  /* ── Header ── */
+  /* -- Header -- */
   const header = document.createElement("div");
   header.className = "item-card__header";
   header.innerHTML = `
-    <span class="drag-handle" title="Drag to reorder">⠿</span>
+    <span class="drag-handle" title="Drag to reorder">?</span>
     <span class="item-card__number">Item ${index + 1}</span>
-    <button class="btn btn--danger" title="Remove item" aria-label="Remove item ${index + 1}">✕</button>
+    <button class="btn btn--danger" title="Remove item" aria-label="Remove item ${index + 1}">?</button>
   `;
   header.querySelector(".btn--danger").addEventListener("click", () =>
     removeItem(item.id)
   );
 
-  /* ── Body ── */
+  /* -- Body -- */
   const body = document.createElement("div");
   body.className = "item-card__body";
 
@@ -738,7 +632,7 @@ function createItemCard(item, index) {
   return li;
 }
 
-/* ── Item drag-and-drop ─────────────────────────────────────── */
+/* -- Item drag-and-drop --------------------------------------- */
 
 let itemDragSrcIndex = null;
 
@@ -936,7 +830,7 @@ function renderApiConfig() {
   }
 }
 
-/* ── API Config event listeners ─────────────────────────────── */
+/* -- API Config event listeners ------------------------------- */
 
 dom.apiEnabled.addEventListener("change", e => {
   updateApiConfig("enabled", e.target.checked);
@@ -956,7 +850,7 @@ dom.apiKey.addEventListener("input", e => {
   updateApiConfig("apiKey", e.target.value);
 });
 
-// Leagues — parse on blur (comma-separated → number array)
+// Leagues — parse on blur (comma-separated ? number array)
 dom.apiLeagues.addEventListener("blur", e => {
   updateApiConfig("leagues", e.target.value);
 });
@@ -965,8 +859,9 @@ dom.apiLeagues.addEventListener("input", e => {
   updateApiConfig("leagues", e.target.value);
 });
 
-/* ── Initial render on page load ────────────────────────────── */
+/* -- Initial render on page load ------------------------------ */
 initCollapsibleSections();
-initPreviewCollapse();initCustomApiSection(); // Section 6 — wire all custom-api event listeners// Initial render without marking dirty — page is clean on load
+initPreviewCollapse();
+bootstrapFootballOnlyMode();
 render();
-renderTopicList();
+

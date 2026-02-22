@@ -29,6 +29,7 @@ const dom = {
   apiRefreshBtn:  document.getElementById("api-refresh-btn"),
   apiLastFetch:   document.getElementById("api-last-fetch"),
   dataFetchRow:   document.getElementById("data-fetch-row"),
+  storageDebug:   document.getElementById("storage-debug"),
 
   // Topic switcher
   topicSelect: document.getElementById("topic-select"),
@@ -259,6 +260,11 @@ function setRefreshEnabled(enabled) {
   if (!dom.apiRefreshBtn) return;
   dom.apiRefreshBtn.classList.toggle("hidden", !enabled);
   dom.apiRefreshBtn.disabled = !enabled;
+}
+
+function updateStorageDebug(text) {
+  if (!dom.storageDebug) return;
+  dom.storageDebug.textContent = text || "";
 }
 
 /**
@@ -516,51 +522,17 @@ function getSuggestionName(idx) {
 // TOPIC SWITCHER DROPDOWN
 // ──────────────────────────────────────────────
 
-/**
- * Build the topic <select> options from all available topics:
- * built-ins (TOPICS registry) merged with user-saved topics from
- * localStorage, minus anything the user has deleted.
- *
- * Mirrors the same merge logic as the builder's loadSavedTopics().
- *
- * @param {string} currentKey — the currently active topic key
- */
+/** Football-only mode: render a single locked topic option when present. */
 function renderTopicSelect(currentKey) {
   if (!dom.topicSelect) return;
 
-  // Keys the user has deleted (built-ins can be hidden this way)
-  let deletedKeys = new Set();
-  try {
-    const raw = localStorage.getItem("quizBuilderDeletedTopics");
-    if (raw) deletedKeys = new Set(JSON.parse(raw));
-  } catch { /* ignore */ }
-
-  // Start with built-ins
-  const map = new Map();
-  Object.values(TOPICS).forEach(t => map.set(t.topicKey, t));
-
-  // Overlay with user-saved topics from the builder
-  try {
-    const raw = localStorage.getItem("quizBuilderTopics");
-    if (raw) {
-      const saved = JSON.parse(raw);
-      if (Array.isArray(saved)) {
-        saved.forEach(t => { if (t.topicKey) map.set(t.topicKey, t); });
-      }
-    }
-  } catch { /* ignore */ }
-
-  // Filter deleted, then render
   dom.topicSelect.innerHTML = "";
-  Array.from(map.values())
-    .filter(t => !deletedKeys.has(t.topicKey))
-    .forEach(topic => {
-      const opt = document.createElement("option");
-      opt.value = topic.topicKey;
-      opt.textContent = `${topic.icon || ""} ${topic.topicName || topic.topicKey}`.trim();
-      if (topic.topicKey === currentKey) opt.selected = true;
-      dom.topicSelect.appendChild(opt);
-    });
+  const opt = document.createElement("option");
+  opt.value = "Football";
+  opt.textContent = "⚽ Football";
+  opt.selected = currentKey === "Football";
+  dom.topicSelect.appendChild(opt);
+  dom.topicSelect.disabled = true;
 }
 
 // ──────────────────────────────────────────────
@@ -591,6 +563,7 @@ const ui = {
   updateLastFetched,
   updateSeasonBadge,
   setRefreshEnabled,
+  updateStorageDebug,
 
   // Feedback
   showFeedback,

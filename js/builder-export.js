@@ -11,6 +11,28 @@
 
 "use strict";
 
+/**
+ * Resolve the season value for exported apiConfig.
+ * Reuses builder.js helper when available.
+ * @param {unknown} season
+ * @returns {number}
+ */
+function resolveFootballSeasonForExport(season) {
+  const maxSeason = (typeof MAX_FOOTBALL_SEASON === "number")
+    ? MAX_FOOTBALL_SEASON
+    : 2024;
+  if (typeof normalizeFootballSeason === "function") {
+    return normalizeFootballSeason(season);
+  }
+  const parsed = Number.parseInt(season, 10);
+  if (!Number.isFinite(parsed) || parsed < 2000) {
+    const now = new Date();
+    const inferred = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
+    return Math.min(inferred, maxSeason);
+  }
+  return Math.min(parsed, maxSeason);
+}
+
 /* ============================================================
    BUILD — assemble the topic object from current state
    ============================================================ */
@@ -98,58 +120,7 @@ function buildTopicObject() {
       // supply it at runtime via the quiz UI.
       ...(ac.apiKey ? { apiKey: ac.apiKey } : {}),
       leagues:  ac.leagues.length ? ac.leagues : [],
-      season:   ac.season || 2024,
-    };
-  }
-
-  /* ── Attach customApiConfig when enabled (Section 6 — Custom API) ── */
-  const cac = state.customApiConfig;
-  if (cac.enabled) {
-    // Auth: persist type + headerName so the config can be shared.
-    // The credential (token/password) is NEVER written to disk — it must
-    // be re-entered each session (treated like the API-Football key).
-    const auth = cac.auth || {};
-    const authMeta = { type: auth.type || "none" };
-    if (auth.type === "apikey") {
-      authMeta.headerName = (auth.headerName || "X-API-Key").trim();
-    }
-
-    obj.customApiConfig = {
-      enabled:     true,
-      baseUrl:     cac.baseUrl   || "",
-      endpoint:    cac.endpoint  || "",
-      method:      cac.method    || "GET",
-      auth:        authMeta,
-      // Serialize [{id,key,value}] arrays → plain objects for clean JSON
-      headers:     _kvArrayToObj(cac.headers),
-      queryParams: _kvArrayToObj(cac.queryParams),
-      dataPath:    cac.dataPath  || "",
-      // Only include maxPages when > 1 to keep the exported JSON clean
-      ...(cac.maxPages > 1 ? { maxPages: Math.floor(cac.maxPages) } : {}),
-      // schemaUrl is a discovery helper — useful to save in the file
-      ...(cac.schemaUrl ? { schemaUrl: cac.schemaUrl.trim() } : {}),
-    };
-  }
-
-  /* ── Attach fieldMapping when a name field is configured ── */
-  const fm = state.fieldMapping;
-  if (fm.nameField || fm.categories.length > 0) {
-    // Serialize [{id,categoryName,fieldKey,transform}] → plain objects
-    const categoriesObj = {};
-    const transformsObj = {};
-    fm.categories.forEach(c => {
-      const catKey = (c.categoryName || "")
-        .toLowerCase().trim().replace(/[^a-z0-9 _]/g, "").replace(/\s+/g, "_");
-      if (catKey && c.fieldKey) {
-        categoriesObj[catKey] = c.fieldKey;
-        if (c.transform) transformsObj[catKey] = c.transform;  // only when set
-      }
-    });
-    obj.fieldMapping = {
-      name:       fm.nameField || "",
-      categories: categoriesObj,
-      // Only include transforms block when at least one transform is configured
-      ...(Object.keys(transformsObj).length > 0 ? { transforms: transformsObj } : {}),
+      season:   resolveFootballSeasonForExport(ac.season),
     };
   }
 
@@ -215,12 +186,10 @@ function validateState() {
   });
 
   /* ── Data item checks (skip when API provides data) ── */
-  // Either the API-Football source (Section 5) or the Custom API (Section 6)
-  // can supply items — both exempt the topic from needing static data entries.
-  const usingApi = state.apiConfig.enabled || state.customApiConfig.enabled;
+  const usingApi = state.apiConfig.enabled;
   const manualItems = state.items.filter(item => !item._fromApi);
   if (!usingApi && manualItems.length === 0) {
-    errors.push("Add at least one data item (Section 4), or enable an API in Section 5 or 6.");
+    errors.push("Add at least one data item (Section 4), or enable API-Football in Section 5.");
   } else if (!usingApi) {
     const validKeys = getValidCategoryKeys();
     manualItems.forEach((item, i) => {
@@ -244,48 +213,19 @@ function validateState() {
   /* ── API Config checks (Section 5 — API-Football, only when enabled) ── */
   const ac = state.apiConfig;
   if (ac.enabled) {
+    const maxSeason = (typeof MAX_FOOTBALL_SEASON === "number")
+      ? MAX_FOOTBALL_SEASON
+      : 2024;
     if (!ac.provider) {
       errors.push("API Config (Section 5): Provider is required.");
     }
     if (ac.leagues.length === 0) {
       errors.push("API Config (Section 5): Enter at least one League ID.");
     }
-    if (!ac.season || ac.season < 2000 || ac.season > 2099) {
-      errors.push("API Config (Section 5): Season must be a valid year (2000–2099).");
+    if (!ac.season || ac.season < 2000 || ac.season > maxSeason) {
+      errors.push(`API Config (Section 5): Season must be a valid year (2000-${maxSeason}).`);
     }
     // Note: apiKey is optional at export time — can be entered in the quiz UI
-  }
-
-  /* ── Custom API Config checks (Section 6, only when enabled) ── */
-  const cac = state.customApiConfig;
-  if (cac.enabled) {
-    if (!cac.baseUrl.trim()) {
-      errors.push("Custom API (Section 6): Base URL is required.");
-    }
-
-    // Field mapping is required when the custom API is the data source
-    const usingCustomApi = cac.enabled && !state.apiConfig.enabled;
-    if (usingCustomApi) {
-      if (!state.fieldMapping.nameField) {
-        errors.push(
-          "Custom API (Section 6): Select a field to use as the item name in the Field Mapping."
-        );
-      }
-      if (state.fieldMapping.categories.length === 0) {
-        errors.push(
-          "Custom API (Section 6): Add at least one category mapping in the Field Mapping."
-        );
-      } else {
-        state.fieldMapping.categories.forEach((c, i) => {
-          if (!c.categoryName.trim()) {
-            errors.push(`Custom API Field Mapping: Category ${i + 1} needs a name.`);
-          }
-          if (!c.fieldKey) {
-            errors.push(`Custom API Field Mapping: Category ${i + 1} needs a field selected.`);
-          }
-        });
-      }
-    }
   }
 
   return errors;
@@ -383,33 +323,12 @@ if (dom.saveTopicBtn) {
 
     const obj = buildTopicObject();
     upsertTopic(obj);
-    renderTopicList();
     clearDirty();
     showToast("✅ Topic saved!");
   });
 }
 
-/* ── Delete topic from localStorage ─────────────────────────── */
-if (dom.deleteTopicBtn) {
-  dom.deleteTopicBtn.addEventListener("click", () => {
-    const key = state.meta.topicKey;
-    if (!key) {
-      showToast("❌ No topic key set.", "error");
-      return;
-    }
-
-    if (!confirm(`Delete "${state.meta.topicName || key}"?`)) return;
-
-    deleteSavedTopic(key);
-    _suppressDirty = true;
-    resetEditorToBlank();
-    _suppressDirty = false;
-    clearDirty();
-    render();
-    renderTopicList();
-    showToast("🗑️ Topic deleted.");
-  });
-}
+/* Delete button removed in Football-only mode. */
 
 
 /* ============================================================
