@@ -1,6 +1,6 @@
 {
-  "appId": "com.myquiz.app",
-  "appName": "QuizGame",
+  "appId": "com.practicefootball.game",
+  "appName": "Practice Football Game",
   "webDir": "www",
   "bundledWebRuntime": false,
   "server": {

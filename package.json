@@ -6,7 +6,8 @@
   "scripts": {
     "build": "node scripts/prepare-www.js",
     "sync": "npm run build && npx cap sync android",
-    "open": "npx cap open android"
+    "open": "npx cap open android",
+    "android:init": "node scripts/init-android.js"
   },
   "dependencies": {
     "@capacitor/android": "^7.0.0",

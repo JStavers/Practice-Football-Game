@@ -42,3 +42,50 @@ The `VALID_ANSWERS` object in `script.js` maps each modifier combination to acce
 ```
 
 All keys and values should be **lowercase**.
+
+
+## Android App (Capacitor)
+
+This branch includes Capacitor Android support. If your checkout does **not** have an `android/` folder (for example, older clones/branches), run:
+
+```bash
+npm run android:init
+```
+
+That command creates `android/` (if missing) and syncs the current web app into it.
+
+### One-time setup
+
+```bash
+npm install
+npm run sync
+```
+
+### First-time one-command setup (safe to re-run)
+
+```bash
+npm run android:init
+```
+
+### Open in Android Studio
+
+```bash
+npm run open
+```
+
+### Build APK from CLI
+
+```bash
+cd android
+./gradlew assembleDebug
+```
+
+Debug APK output:
+
+`android/app/build/outputs/apk/debug/app-debug.apk`
+
+Whenever you change web assets (`index.html`, `css/`, `js/`, etc.), run:
+
+```bash
+npm run sync
+```
