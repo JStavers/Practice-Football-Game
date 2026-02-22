@@ -21,6 +21,7 @@
   --nav-text-active:  #f1f5f9;
   --nav-item-radius:  8px;
   --nav-transition:   0.25s ease;
+  --safe-top:         env(safe-area-inset-top, 0px);
 }
 
 /* Make body a flex container so sidebar + content sit side-by-side */
@@ -55,14 +56,24 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 20px 18px 14px;
+  padding: calc(20px + var(--safe-top)) 18px 14px;
   border-bottom: 1px solid var(--nav-border);
   text-decoration: none;
 }
 
 .sidebar__brand-icon {
-  font-size: 1.5rem;
+  font-size: 1.35rem;
+  font-weight: 700;
   line-height: 1;
+  color: var(--nav-text-active);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.25), rgba(14, 165, 233, 0.12));
+  border-radius: 10px;
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .sidebar__brand-name {
@@ -133,10 +144,13 @@ body {
 
 .nav-item__icon {
   font-size: 1rem;
-  width: 20px;
+  width: 24px;
   text-align: center;
   flex-shrink: 0;
-  opacity: 0.8;
+  opacity: 0.95;
+  color: var(--nav-text-active);
+  border: none;
+  padding: 0;
 }
 
 .nav-item--active .nav-item__icon {
@@ -146,7 +160,7 @@ body {
 /* ── Sidebar Footer ───────────────────────────────────────────── */
 .sidebar__footer {
   margin-top: auto;
-  padding: 14px 18px;
+  padding: 14px 18px calc(14px + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--nav-border);
   font-size: 0.72rem;
   color: var(--nav-text);
@@ -157,7 +171,7 @@ body {
 .nav-toggle {
   display: none;            /* hidden on desktop */
   position: fixed;
-  top: 12px;
+  top: calc(12px + var(--safe-top));
   left: 12px;
   z-index: 300;
   width: 38px;
@@ -220,7 +234,7 @@ body.nav-open .nav-toggle__bar:nth-child(3) {
   flex: 1;
   min-width: 0;
   margin-left: var(--nav-width);
-  padding: 16px;
+  padding: calc(16px + var(--safe-top)) 16px 16px;
   display: flex;
   justify-content: center;
 }
@@ -246,11 +260,13 @@ body.nav-open .nav-toggle__bar:nth-child(3) {
   /* Show hamburger button */
   .nav-toggle {
     display: flex;
+    width: 42px;
+    height: 42px;
   }
 
   /* Content is full width; add top padding so hamburger doesn't overlap */
   .page-content {
     margin-left: 0;
-    padding-top: 60px;
+    padding-top: calc(60px + var(--safe-top));
   }
 }

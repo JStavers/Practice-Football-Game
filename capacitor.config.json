@@ -1,6 +1,6 @@
 {
   "appId": "com.practicefootball.game",
-  "appName": "Practice Football Game",
+  "appName": "The Lineup: Football Edition",
   "webDir": "www",
   "bundledWebRuntime": false,
   "server": {
@@ -19,6 +19,10 @@
       "launchAutoHide": true,
       "backgroundColor": "#0f172a",
       "showSpinner": false
+    },
+    "StatusBar": {
+      "overlaysWebView": false,
+      "backgroundColor": "#0a1020"
     }
   }
 }

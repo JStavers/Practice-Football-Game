@@ -977,6 +977,49 @@ body {
   border-radius: var(--radius-sm);
 }
 
+.league-selector {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+  padding: 10px;
+  background: var(--clr-bg);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-sm);
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.league-selector__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.league-selector__count {
+  margin-left: auto;
+  font-size: 0.8rem;
+  color: var(--clr-text-muted);
+}
+
+.league-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.86rem;
+  color: var(--clr-text);
+  cursor: pointer;
+}
+
+.league-option__checkbox {
+  accent-color: var(--clr-primary);
+}
+
+.league-option__text em {
+  color: var(--clr-text-muted);
+  font-style: normal;
+}
+
 /* ============================================================
    SECTION 6 — CUSTOM API BUILDER
    ============================================================ */

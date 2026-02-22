@@ -220,7 +220,7 @@ function validateState() {
       errors.push("API Config (Section 5): Provider is required.");
     }
     if (ac.leagues.length === 0) {
-      errors.push("API Config (Section 5): Enter at least one League ID.");
+      errors.push("API Config (Section 5): Select at least one league.");
     }
     if (!ac.season || ac.season < 2000 || ac.season > maxSeason) {
       errors.push(`API Config (Section 5): Season must be a valid year (2000-${maxSeason}).`);
@@ -324,7 +324,14 @@ if (dom.saveTopicBtn) {
     const obj = buildTopicObject();
     upsertTopic(obj);
     clearDirty();
-    showToast("✅ Topic saved!");
+    const leaguesSelected = Array.isArray(state.apiConfig.leagues)
+      ? state.apiConfig.leagues.length
+      : 0;
+    const savedAt = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    if (typeof setSaveStatus === "function") {
+      setSaveStatus(`Saved at ${savedAt}. ${leaguesSelected} league(s) selected.`);
+    }
+    showToast(`✅ API settings saved (${leaguesSelected} league${leaguesSelected === 1 ? "" : "s"})`);
   });
 }
 

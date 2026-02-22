@@ -261,17 +261,19 @@
               </div>
 
               <div class="form-row">
-                <label class="form-label" for="api-leagues">
-                  League IDs <span class="required">*</span>
+                <label class="form-label" for="api-league-list">
+                  Leagues <span class="required">*</span>
                 </label>
-                <input id="api-leagues" class="form-input" type="text"
-                  placeholder="e.g. 39, 140, 61  (comma-separated)" autocomplete="off" />
+                <div class="league-selector__actions">
+                  <button id="api-leagues-select-all" class="btn btn--secondary btn--sm" type="button">Select all</button>
+                  <button id="api-leagues-clear-all" class="btn btn--ghost btn--sm" type="button">Clear</button>
+                  <span id="api-leagues-count" class="league-selector__count" aria-live="polite">0 selected</span>
+                </div>
+                <div id="api-league-list" class="league-selector" role="group" aria-label="Select leagues"></div>
                 <p class="form-hint">
-                  Numeric league IDs from your API provider. API-Football examples:
-                  39 = Premier League, 140 = La Liga, 135 = Serie A, 78 = Bundesliga.
+                  Tick one or more leagues to include in the live API fetch.
                 </p>
               </div>
-
             </div><!-- /#api-fields -->
 
           </div>
@@ -284,6 +286,7 @@
             💾 Save Topic
           </button>
         </div>
+        <p id="api-save-status" class="form-hint" aria-live="polite">Not saved yet.</p>
 
         <!-- Validation summary (shown on save/export attempt) -->
         <div id="validation-box" class="validation-box hidden" role="alert"></div>
@@ -331,6 +334,3 @@
   </div><!-- /.page-content -->
 </body>
 </html>
-
-
-

@@ -29,7 +29,6 @@ const dom = {
   apiRefreshBtn:  document.getElementById("api-refresh-btn"),
   apiLastFetch:   document.getElementById("api-last-fetch"),
   dataFetchRow:   document.getElementById("data-fetch-row"),
-  storageDebug:   document.getElementById("storage-debug"),
 
   // Topic switcher
   topicSelect: document.getElementById("topic-select"),
@@ -85,9 +84,9 @@ const dom = {
  */
 function applyTopicUI(topic) {
   // Page title
-  document.title = `${topic.topicName} Quiz`;
+  document.title = `${topic.topicName}`;
   if (dom.appTitle) {
-    dom.appTitle.textContent = `${topic.icon} ${topic.topicName} Quiz`;
+    dom.appTitle.textContent = `${topic.icon} ${topic.topicName}`;
   }
 
   // Input placeholder
@@ -149,8 +148,8 @@ function renderStack(rounds, topic) {
 
     topic.categories.forEach((cat) => {
       const colorMod = topic.categoryColors[cat] || "position";
-      const label    = topic.categoryLabels[cat]  || cat;
-      const value    = round.attributes[cat]       || "—";
+      const label    = round.labelOverrides?.[cat] || topic.categoryLabels[cat] || cat;
+      const value    = round.attributes[cat] || "�";
 
       const cell = document.createElement("div");
       cell.classList.add("stack-row__cell", `stack-row__cell--${colorMod}`);
@@ -260,11 +259,6 @@ function setRefreshEnabled(enabled) {
   if (!dom.apiRefreshBtn) return;
   dom.apiRefreshBtn.classList.toggle("hidden", !enabled);
   dom.apiRefreshBtn.disabled = !enabled;
-}
-
-function updateStorageDebug(text) {
-  if (!dom.storageDebug) return;
-  dom.storageDebug.textContent = text || "";
 }
 
 /**
@@ -563,7 +557,6 @@ const ui = {
   updateLastFetched,
   updateSeasonBadge,
   setRefreshEnabled,
-  updateStorageDebug,
 
   // Feedback
   showFeedback,
@@ -597,3 +590,5 @@ const ui = {
   isSuggestionsOpen,
   getSuggestionName,
 };
+
+

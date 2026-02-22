@@ -46,7 +46,11 @@ const dom = {
   apiProvider:      document.getElementById("api-provider"),
   apiSeason:        document.getElementById("api-season"),
   apiKey:           document.getElementById("api-key"),
-  apiLeagues:       document.getElementById("api-leagues"),
+  apiLeagueList:    document.getElementById("api-league-list"),
+  apiLeaguesSelectAll: document.getElementById("api-leagues-select-all"),
+  apiLeaguesClearAll:  document.getElementById("api-leagues-clear-all"),
+  apiLeaguesCount:     document.getElementById("api-leagues-count"),
+  apiSaveStatus:       document.getElementById("api-save-status"),
   /* Editor actions */
   saveTopicBtn:     document.getElementById("save-topic-btn"),
 
@@ -56,6 +60,62 @@ const dom = {
   /* Preview collapse */
   previewCollapseBtn: document.getElementById("preview-collapse-btn"),
 };
+
+const KNOWN_API_FOOTBALL_LEAGUES = [
+  { id: 39,  name: "Premier League" },
+  { id: 140, name: "La Liga" },
+  { id: 135, name: "Serie A" },
+  { id: 78,  name: "Bundesliga" },
+  { id: 61,  name: "Ligue 1" },
+  { id: 253, name: "MLS" },
+  { id: 94,  name: "Primeira Liga" },
+  { id: 88,  name: "Eredivisie" },
+  { id: 144, name: "Pro League (Belgium)" },
+  { id: 203, name: "Super Lig" },
+  { id: 307, name: "Saudi Pro League" },
+];
+
+function getLeagueOptions(selectedIds = []) {
+  const map = new Map(KNOWN_API_FOOTBALL_LEAGUES.map((league) => [league.id, league.name]));
+  selectedIds.forEach((id) => {
+    if (!map.has(id)) map.set(id, `League ${id}`);
+  });
+
+  return Array.from(map.entries())
+    .map(([id, name]) => ({ id, name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function renderLeagueOptions(selectedIds = []) {
+  const host = dom.apiLeagueList;
+  if (!host) return;
+
+  const selected = new Set(selectedIds.map(Number));
+  const options = getLeagueOptions(Array.from(selected));
+
+  host.innerHTML = options.map((opt) => {
+    const checked = selected.has(opt.id) ? "checked" : "";
+    return `
+      <label class="league-option">
+        <input type="checkbox" class="league-option__checkbox" data-league-id="${opt.id}" ${checked} />
+        <span class="league-option__text">${escHtml(opt.name)} <em>(ID ${opt.id})</em></span>
+      </label>
+    `;
+  }).join("");
+
+  if (dom.apiLeaguesCount) {
+    dom.apiLeaguesCount.textContent = `${selected.size} selected`;
+  }
+}
+
+function getAllKnownLeagueIds() {
+  return KNOWN_API_FOOTBALL_LEAGUES.map((league) => league.id);
+}
+
+function setSaveStatus(message) {
+  if (!dom.apiSaveStatus) return;
+  dom.apiSaveStatus.textContent = message;
+}
 
 /* ============================================================
    RENDER — top-level render function
@@ -165,6 +225,7 @@ let _suppressDirty = false; // Set true during load operations to avoid false di
 function markDirty() {
   _isDirty = true;
   if (dom.dirtyBanner) dom.dirtyBanner.classList.remove("hidden");
+  setSaveStatus("Unsaved changes.");
 }
 
 /**
@@ -825,15 +886,16 @@ function renderApiConfig() {
   if (document.activeElement !== dom.apiKey) {
     dom.apiKey.value = cfg.apiKey;
   }
-  if (document.activeElement !== dom.apiLeagues) {
-    dom.apiLeagues.value = cfg.leagues.join(", ");
-  }
+  renderLeagueOptions(cfg.leagues);
 }
 
 /* -- API Config event listeners ------------------------------- */
 
 dom.apiEnabled.addEventListener("change", e => {
   updateApiConfig("enabled", e.target.checked);
+  if (e.target.checked && (!Array.isArray(state.apiConfig.leagues) || state.apiConfig.leagues.length === 0)) {
+    updateApiConfig("leagues", getAllKnownLeagueIds());
+  }
 });
 
 dom.apiProvider.addEventListener("change", e => {
@@ -850,14 +912,25 @@ dom.apiKey.addEventListener("input", e => {
   updateApiConfig("apiKey", e.target.value);
 });
 
-// Leagues — parse on blur (comma-separated ? number array)
-dom.apiLeagues.addEventListener("blur", e => {
-  updateApiConfig("leagues", e.target.value);
+// Leagues checklist — persist selected IDs as numeric array
+dom.apiLeagueList.addEventListener("change", () => {
+  const ids = Array.from(dom.apiLeagueList.querySelectorAll(".league-option__checkbox:checked"))
+    .map((el) => Number.parseInt(el.dataset.leagueId, 10))
+    .filter((n) => Number.isInteger(n) && n > 0);
+  updateApiConfig("leagues", ids);
 });
-// Also update live so the preview stays in sync while typing
-dom.apiLeagues.addEventListener("input", e => {
-  updateApiConfig("leagues", e.target.value);
-});
+
+if (dom.apiLeaguesSelectAll) {
+  dom.apiLeaguesSelectAll.addEventListener("click", () => {
+    updateApiConfig("leagues", getAllKnownLeagueIds());
+  });
+}
+
+if (dom.apiLeaguesClearAll) {
+  dom.apiLeaguesClearAll.addEventListener("click", () => {
+    updateApiConfig("leagues", []);
+  });
+}
 
 /* -- Initial render on page load ------------------------------ */
 initCollapsibleSections();

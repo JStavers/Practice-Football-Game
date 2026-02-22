@@ -74,8 +74,8 @@ async function apiFetchItems(apiConfig, progressCallback = null) {
 /** Base URL — local proxy forwards to v3.football.api-sports.io (run proxy.py) */
 const API_FOOTBALL_BASE = "https://v3.football.api-sports.io";
 
-/** Max pages to fetch per league (to stay within API rate limits) */
-const MAX_PAGES_PER_LEAGUE = 10;
+/** Max pages to fetch per league (provider account limit: 3 pages per pull) */
+const MAX_PAGES_PER_LEAGUE = 3;
 
 /**
  * Maps a raw API-Football position string to one of the engine's

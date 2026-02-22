@@ -14,7 +14,6 @@
  * Set to `false` before sharing or deploying.
  */
 const DEV_MODE = true;
-const ENGINE_BUILD = "20260221d";
 const MAX_FOOTBALL_SEASON = 2024;
 
 /**
@@ -69,8 +68,16 @@ const CONFIG = {
     { id: 253, season: DEFAULT_FOOTBALL_SEASON, name: "MLS" },
   ],
 
-  /** Max pages per league fetch */
-  MAX_PAGES_PER_LEAGUE: 10,
+  /** Max pages per league fetch (provider account limit: 3 pages per pull) */
+  MAX_PAGES_PER_LEAGUE: 3,
+  /** Delay between page requests within one league fetch */
+  PAGE_REQUEST_GAP_MS: 120,
+  /** Delay between league fetches so calls are clearly separated */
+  LEAGUE_REQUEST_GAP_MS: 350,
+  /** Retry attempts per league page request when throttled */
+  API_PAGE_RETRIES: 3,
+  /** Backoff base delay (ms) used for retries */
+  API_RETRY_BASE_MS: 600,
 
   /** localStorage keys */
   LS_HIGH_SCORE: "quizEngineHighScore",
@@ -150,10 +157,69 @@ const POSITION_MAP = {
   "goalkeeper": ["Goalkeeper"],
 };
 
+const POSITION_GROUP_MAP = {
+  "striker": "Attacker",
+  "winger": "Attacker",
+  "attacking midfielder": "Midfielder",
+  "central midfielder": "Midfielder",
+  "defensive midfielder": "Midfielder",
+  "centre-back": "Defender",
+  "full-back": "Defender",
+  "wing-back": "Defender",
+  "goalkeeper": "Goalkeeper",
+};
+
 function mapApiPosition(apiPos) {
   const options = POSITION_MAP[apiPos.toLowerCase()];
   if (!options) return apiPos;
   return options[Math.floor(Math.random() * options.length)];
+}
+
+function toPositionGroup(position) {
+  const key = normalize(position);
+  return POSITION_GROUP_MAP[key] || "Unknown";
+}
+
+function ensureFootballAttributes(item) {
+  if (!item || !item.attributes) return item;
+  const attrs = item.attributes;
+  const position = attrs.position || "Unknown";
+  return {
+    ...item,
+    attributes: {
+      ...attrs,
+      team: attrs.team || attrs.league || "Unknown",
+      positionGroup: attrs.positionGroup || toPositionGroup(position),
+    },
+  };
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchLeaguePageWithRetry(apiKey, leagueId, season, page) {
+  for (let attempt = 1; attempt <= CONFIG.API_PAGE_RETRIES; attempt++) {
+    const url = `${CONFIG.API_BASE}/players?league=${leagueId}&season=${season}&page=${page}`;
+    const res = await fetch(url, {
+      headers: {
+        "x-apisports-key": apiKey,
+      },
+    });
+
+    if (res.ok) return res;
+
+    const retryable = res.status === 429 || res.status >= 500;
+    if (!retryable || attempt >= CONFIG.API_PAGE_RETRIES) {
+      return res;
+    }
+
+    const waitMs = CONFIG.API_RETRY_BASE_MS * attempt;
+    console.warn(`[Engine] League ${leagueId} page ${page} throttled (${res.status}). Retrying in ${waitMs}ms.`);
+    await sleep(waitMs);
+  }
+
+  return null;
 }
 
 // ──────────────────────────────────────────────
@@ -269,6 +335,14 @@ async function setTopic(topicKey, apiKeyOverride = null) {
         // the built-in topic's multipliers so scoring still works correctly.
         if (topic && (!override.difficultyWeights || Object.keys(override.difficultyWeights).length === 0)) {
           converted.multipliers = topic.multipliers;
+        }
+
+        // Preserve Football-specific round-difficulty settings from built-ins.
+        if (topic?.categoryDifficulty) {
+          converted.categoryDifficulty = topic.categoryDifficulty;
+        }
+        if (topic?.positionMultipliers) {
+          converted.positionMultipliers = topic.positionMultipliers;
         }
 
         // If the override has no static data items, inherit the built-in's
@@ -663,6 +737,51 @@ function calcRoundPoints(round) {
   return Math.round(round.basePoints * depthMultiplier * extra);
 }
 
+function footballDifficultyProfile(topic, pivot) {
+  const cd = topic.categoryDifficulty || {};
+  const leagueCfg = cd.league || {};
+  const posCfg = cd.position || {};
+
+  const leagueBase = topic.multipliers[normalize(pivot.attributes.league)] || 1;
+  const teamChance = Number(leagueCfg.teamChance ?? 0.4);
+  const useTeam = !!pivot.attributes.team && Math.random() < Math.min(Math.max(teamChance, 0), 1);
+  const leagueMode = useTeam ? "team" : "league";
+  const leagueFactor = useTeam
+    ? Number(leagueCfg.teamFactor ?? 1.55)
+    : Number(leagueCfg.leagueFactor ?? 1.0);
+  const leagueValue = useTeam ? pivot.attributes.team : pivot.attributes.league;
+
+  const specificChance = Number(posCfg.specificChance ?? 0.5);
+  const useSpecific = !!pivot.attributes.position && Math.random() < Math.min(Math.max(specificChance, 0), 1);
+  const positionMode = useSpecific ? "position" : "positionGroup";
+  const positionFactor = useSpecific
+    ? Number(posCfg.specificFactor ?? 1.25)
+    : Number(posCfg.groupFactor ?? 0.9);
+  const positionValue = useSpecific ? pivot.attributes.position : pivot.attributes.positionGroup;
+  const posMap = topic.positionMultipliers || {};
+  const positionBase = Number(posMap[normalize(positionValue)] || 1);
+
+  const total = leagueBase * leagueFactor * positionBase * positionFactor;
+
+  return {
+    basePoints: Math.round(10 * total),
+    attributes: {
+      position: positionValue,
+      league: leagueValue,
+      country: pivot.attributes.country || "Unknown",
+    },
+    matchKeys: {
+      position: positionMode,
+      league: leagueMode,
+      country: "country",
+    },
+    labelOverrides: {
+      position: useSpecific ? "Position" : "Role",
+      league: useTeam ? "Team" : "League",
+    },
+  };
+}
+
 // ──────────────────────────────────────────────
 // STACKED ROUND SYSTEM
 // ──────────────────────────────────────────────
@@ -673,20 +792,37 @@ function calcRoundPoints(round) {
  * @returns {object}
  */
 function createRound() {
-  const topic  = requireTopic();
-  const pivot  = randomFrom(state.items);
-  const multi  = topic.multipliers[normalize(pivot.attributes[topic.difficultyKey])] || 1;
+  const topic = requireTopic();
+  const rawPivot = randomFrom(state.items);
+  const pivot = topic.topicKey === "Football"
+    ? ensureFootballAttributes(rawPivot)
+    : rawPivot;
 
-  return {
+  const baseRound = {
     id:         state.nextRoundId++,
-    attributes: { ...pivot.attributes }, // copy all category values
-    basePoints: Math.round(10 * multi),
     rowIndex:   0,
     createdAt:  Date.now(),
-    extraBonus: 1.0, // grows +0.5× each time this row survives a timeout as oldest
+    extraBonus: 1.0, // grows +0.5x each time this row survives a timeout as oldest
+  };
+
+  if (topic.topicKey === "Football") {
+    const prof = footballDifficultyProfile(topic, pivot);
+    return {
+      ...baseRound,
+      attributes: prof.attributes,
+      matchKeys: prof.matchKeys,
+      labelOverrides: prof.labelOverrides,
+      basePoints: prof.basePoints,
+    };
+  }
+
+  const multi = topic.multipliers[normalize(pivot.attributes[topic.difficultyKey])] || 1;
+  return {
+    ...baseRound,
+    attributes: { ...pivot.attributes },
+    basePoints: Math.round(10 * multi),
   };
 }
-
 /**
  * Push a new round onto the top of the stack.
  * Existing rounds shift down by one rowIndex.
@@ -761,7 +897,7 @@ function findMatchingItem(userInput, round) {
   // Among name matches, find one that satisfies all category constraints
   const match = nameMatches.find(item =>
     topic.categories.every(cat =>
-      normalize(item.attributes[cat]) === normalize(round.attributes[cat])
+      normalize(item.attributes[round.matchKeys?.[cat] || cat]) === normalize(round.attributes[cat])
     )
   );
 
@@ -893,26 +1029,13 @@ function loadHighScore() {
     lsRemove("footballQuizHighScore");
   }
 
-  if (typeof ui !== "undefined" && typeof ui.updateStorageDebug === "function") {
-    ui.updateStorageDebug(
-      `debug storage [build=${ENGINE_BUILD}]: ${CONFIG.LS_HIGH_SCORE}="${keyA}" | footballQuizHighScore="${keyB}" | computedBest=${best}`
-    );
-  }
   return best;
 }
 
 function saveHighScore(score) {
   const safeScore = Number.isFinite(score) ? Math.max(0, Math.floor(score)) : 0;
-  const wrote = lsSet(CONFIG.LS_HIGH_SCORE, safeScore.toString());
-  const readBack = lsGet(CONFIG.LS_HIGH_SCORE) ?? "";
-  const clearedLegacy = (lsRemove("footballQuizHighScore"), (lsGet("footballQuizHighScore") ?? "") === "");
-  const debugText =
-    `debug storage write [build=${ENGINE_BUILD}]: target="${safeScore}" | wrote=${wrote} | readBack="${readBack}" | legacyCleared=${clearedLegacy}`;
-  if (typeof ui !== "undefined" && typeof ui.updateStorageDebug === "function") {
-    ui.updateStorageDebug(debugText);
-  }
-  const dbgEl = document.getElementById("storage-debug");
-  if (dbgEl) dbgEl.textContent = debugText;
+  lsSet(CONFIG.LS_HIGH_SCORE, safeScore.toString());
+  lsRemove("footballQuizHighScore");
 }
 
 function updateHighScore() {
@@ -947,7 +1070,7 @@ function getValidAnswers() {
       .filter((item) =>
         topic.categories.every(
           (cat) =>
-            normalize(item.attributes[cat]) === normalize(round.attributes[cat])
+            normalize(item.attributes[round.matchKeys?.[cat] || cat]) === normalize(round.attributes[cat])
         )
       )
       .map((item) => item.name);
@@ -985,12 +1108,11 @@ async function fetchLeaguePlayers(apiKey, leagueId, season, leagueName) {
   let page = 1;
 
   while (page <= CONFIG.MAX_PAGES_PER_LEAGUE) {
-    const url = `${CONFIG.API_BASE}/players?league=${leagueId}&season=${season}&page=${page}`;
-    const res = await fetch(url, {
-      headers: {
-        "x-apisports-key": apiKey,
-      },
-    });
+    const res = await fetchLeaguePageWithRetry(apiKey, leagueId, season, page);
+    if (!res) {
+      console.warn(`API request failed with no response (league ${leagueId}, page ${page})`);
+      break;
+    }
 
     if (!res.ok) {
       console.warn(`API error (league ${leagueId}, page ${page}): ${res.status}`);
@@ -1008,6 +1130,7 @@ async function fetchLeaguePlayers(apiKey, leagueId, season, leagueName) {
 
       const rawPos = stats.games?.position || p.position || "";
       if (!rawPos) continue;
+      const mappedPosition = mapApiPosition(rawPos);
 
       const first = p.firstname || null;
       const last  = p.lastname  || null;
@@ -1020,8 +1143,10 @@ async function fetchLeaguePlayers(apiKey, leagueId, season, leagueName) {
         name:       full,
         searchName: full.toLowerCase(),
         attributes: {
-          position: mapApiPosition(rawPos),
+          position: mappedPosition,
+          positionGroup: toPositionGroup(mappedPosition),
           league:   resolvedLeague,
+          team:     stats.team?.name || resolvedLeague,
           country:  p.nationality || "Unknown",
         },
       });
@@ -1030,6 +1155,7 @@ async function fetchLeaguePlayers(apiKey, leagueId, season, leagueName) {
     const totalPages = json.paging?.total || 1;
     if (page >= totalPages) break;
     page++;
+    await sleep(CONFIG.PAGE_REQUEST_GAP_MS);
   }
 
   return players;
@@ -1180,6 +1306,14 @@ function loadCachedPlayers() {
   }
 }
 
+function normalizeTopicItemsForRuntime(topic, items) {
+  if (!Array.isArray(items)) return [];
+  if (topic?.topicKey === "Football") {
+    return items.map(ensureFootballAttributes);
+  }
+  return items;
+}
+
 // ──────────────────────────────────────────────
 // GENERIC TOPIC DATA INIT (API or fallback)
 // ──────────────────────────────────────────────
@@ -1213,10 +1347,10 @@ async function initTopicData(topic) {
   if (shouldFetchCustom && typeof getCachedCustomApiItems === "function") {
     const customCached = getCachedCustomApiItems(topicKey);
     if (customCached && customCached.length > 0) {
-      state.items = customCached.map(item => ({
+      state.items = normalizeTopicItemsForRuntime(topic, customCached.map(item => ({
         ...item,
         searchName: (item.name || "").toLowerCase(),
-      }));
+      })));
       state.isLiveData = true;
       return;
     }
@@ -1230,7 +1364,7 @@ async function initTopicData(topic) {
     const currentSig = buildCacheSig(ac);
     const storedSig  = lsGet(lsCacheSigKey(topicKey)) || "";
     if (!currentSig || currentSig === storedSig) {
-      state.items      = cached;
+      state.items      = normalizeTopicItemsForRuntime(topic, cached);
       state.isLiveData = true;
       return;
     }
@@ -1251,10 +1385,10 @@ async function initTopicData(topic) {
     try {
       const customResult = await fetchCustomApiTopicData(topic);
       if (customResult.length > 0) {
-        state.items      = customResult;
+        state.items      = normalizeTopicItemsForRuntime(topic, customResult);
         state.isLiveData = true;
         if (typeof cacheCustomApiItems === "function") {
-          cacheCustomApiItems(topicKey, customResult);
+          cacheCustomApiItems(topicKey, state.items);
         }
         ui.showLoading(false);
         return;
@@ -1283,9 +1417,9 @@ async function initTopicData(topic) {
       try {
         const items = await fetchTopicDataFromAPI(topic, ac, apiKey);
         if (items.length > 0) {
-          state.items      = items;
+          state.items      = normalizeTopicItemsForRuntime(topic, items);
           state.isLiveData = true;
-          cacheTopicItems(topicKey, items, ac);
+          cacheTopicItems(topicKey, state.items, ac);
           ui.showLoading(false);
           return;
         }
@@ -1303,13 +1437,13 @@ async function initTopicData(topic) {
   if (topicKey === "Football") {
     const legacyCached = loadCachedPlayers();
     if (legacyCached) {
-      state.items      = legacyCached;
+      state.items      = normalizeTopicItemsForRuntime(topic, legacyCached);
       state.isLiveData = true;
       return;
     }
   }
 
-  state.items      = (topic.data || []).map((item) => ({ ...item }));
+  state.items      = normalizeTopicItemsForRuntime(topic, (topic.data || []).map((item) => ({ ...item })));
   state.isLiveData = false;
 }
 
@@ -1380,6 +1514,7 @@ async function fetchCustomApiTopicData(topic) {
 async function fetchTopicViaApiFootball(topic, ac, apiKey) {
   const fetchAllLeagues = async (leagues) => {
     const all = [];
+    const leagueSummary = [];
 
     for (let i = 0; i < leagues.length; i++) {
       const lg = leagues[i];
@@ -1388,17 +1523,27 @@ async function fetchTopicViaApiFootball(topic, ac, apiKey) {
       try {
         const players = await fetchLeaguePlayers(apiKey, lg.id, lg.season, lg.name);
         all.push(...players);
+        leagueSummary.push({ id: lg.id, name: lg.name, players: players.length, ok: true });
+        ui.setLoadingText(`Fetched ${players.length} from ${lg.name} (${i + 1}/${leagues.length})`);
       } catch (err) {
         console.error(`[Engine] Failed to fetch league ${lg.id}:`, err);
+        leagueSummary.push({ id: lg.id, name: lg.name, players: 0, ok: false });
+      }
+
+      if (i < leagues.length - 1) {
+        await sleep(CONFIG.LEAGUE_REQUEST_GAP_MS);
       }
     }
 
     const seen = new Set();
-    return all.filter((p) => {
+    const unique = all.filter((p) => {
       if (seen.has(p.searchName)) return false;
       seen.add(p.searchName);
       return true;
     });
+    console.info("[Engine] API-Football league summary:", leagueSummary);
+    console.info(`[Engine] API-Football totals: raw=${all.length}, unique=${unique.length}, leagues=${leagues.length}`);
+    return unique;
   };
 
   // Resolve leagues to fetch.
