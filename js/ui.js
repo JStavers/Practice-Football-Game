@@ -29,9 +29,7 @@ const dom = {
   apiRefreshBtn:  document.getElementById("api-refresh-btn"),
   apiLastFetch:   document.getElementById("api-last-fetch"),
   dataFetchRow:   document.getElementById("data-fetch-row"),
-
-  // Topic switcher
-  topicSelect: document.getElementById("topic-select"),
+  apiFetchReport: document.getElementById("api-fetch-report"),
 
   // Stacked round board
   roundStack: document.getElementById("round-stack"),
@@ -71,6 +69,13 @@ const dom = {
   gameOverHighScore: document.getElementById("game-over-high-score"),
   playAgainBtn:      document.getElementById("play-again-btn"),
 };
+
+if (dom.answerInput && dom.autocompleteList) {
+  dom.answerInput.setAttribute("role", "combobox");
+  dom.answerInput.setAttribute("aria-autocomplete", "list");
+  dom.answerInput.setAttribute("aria-expanded", "false");
+  dom.answerInput.setAttribute("aria-controls", dom.autocompleteList.id);
+}
 
 // ──────────────────────────────────────────────
 // TOPIC UI — update text labels when topic changes
@@ -218,6 +223,57 @@ function updateLastFetched(ts) {
   const text = ts ? `Last pulled: ${formatFetchTime(ts)}` : "";
   if (dom.apiLastFetch) dom.apiLastFetch.textContent = text;
   if (dom.dataFetchRow) dom.dataFetchRow.classList.toggle("hidden", !ts);
+}
+
+/**
+ * Render a per-league API fetch report, or hide it when no report is provided.
+ *
+ * @param {Array<{id:number,name:string,players:number,ok:boolean}>|null} report
+ * @param {{raw:number,unique:number,leagues:number}|null} totals
+ */
+function updateFetchReport(report, totals = null) {
+  if (!dom.apiFetchReport) return;
+
+  if (!Array.isArray(report) || report.length === 0) {
+    dom.apiFetchReport.innerHTML = "";
+    dom.apiFetchReport.classList.add("hidden");
+    return;
+  }
+
+  const okCount = report.filter((entry) => entry && entry.ok).length;
+  const totalCount = report.length;
+  const uniqueCount = Number(totals?.unique || 0);
+  const rawCount = Number(totals?.raw || 0);
+
+  dom.apiFetchReport.innerHTML = "";
+
+  const summary = document.createElement("div");
+  summary.className = "api-fetch-report__summary";
+  summary.textContent = `League fetch: ${okCount}/${totalCount} succeeded | ${uniqueCount} unique (${rawCount} raw)`;
+  dom.apiFetchReport.appendChild(summary);
+
+  const list = document.createElement("ul");
+  list.className = "api-fetch-report__list";
+
+  report.forEach((entry) => {
+    const item = document.createElement("li");
+    item.className = `api-fetch-report__item ${entry.ok ? "api-fetch-report__item--ok" : "api-fetch-report__item--fail"}`;
+
+    const name = document.createElement("span");
+    name.className = "api-fetch-report__name";
+    name.textContent = entry.name || `League ${entry.id || ""}`.trim();
+
+    const count = document.createElement("span");
+    count.className = "api-fetch-report__count";
+    count.textContent = entry.ok ? `${Number(entry.players || 0)} players` : "failed";
+
+    item.appendChild(name);
+    item.appendChild(count);
+    list.appendChild(item);
+  });
+
+  dom.apiFetchReport.appendChild(list);
+  dom.apiFetchReport.classList.remove("hidden");
 }
 
 /**
@@ -444,6 +500,8 @@ function renderSuggestions(matches) {
     const li = document.createElement("li");
     li.classList.add("autocomplete-item");
     li.setAttribute("role", "option");
+    li.setAttribute("aria-selected", "false");
+    li.id = `autocomplete-item-${idx}`;
     li.dataset.index = idx;
 
     const name          = match.item.name;
@@ -472,6 +530,7 @@ function renderSuggestions(matches) {
   });
 
   dom.autocompleteList.classList.add("open");
+  dom.answerInput.setAttribute("aria-expanded", "true");
 }
 
 /** Put the chosen name into the input and close the dropdown. */
@@ -485,15 +544,24 @@ function selectSuggestion(name) {
 function clearSuggestions() {
   dom.autocompleteList.innerHTML = "";
   dom.autocompleteList.classList.remove("open");
+  dom.answerInput.setAttribute("aria-expanded", "false");
+  dom.answerInput.removeAttribute("aria-activedescendant");
   resetAcHighlight();
 }
 
 /** Toggle the `.highlighted` class on suggestion items. */
 function updateHighlight(idx) {
   const items = dom.autocompleteList.querySelectorAll(".autocomplete-item");
-  items.forEach((li, i) => li.classList.toggle("highlighted", i === idx));
+  items.forEach((li, i) => {
+    const selected = i === idx;
+    li.classList.toggle("highlighted", selected);
+    li.setAttribute("aria-selected", selected ? "true" : "false");
+  });
   if (idx >= 0 && items[idx]) {
+    dom.answerInput.setAttribute("aria-activedescendant", items[idx].id);
     items[idx].scrollIntoView({ block: "nearest" });
+  } else {
+    dom.answerInput.removeAttribute("aria-activedescendant");
   }
 }
 
@@ -513,23 +581,6 @@ function getSuggestionName(idx) {
 }
 
 // ──────────────────────────────────────────────
-// TOPIC SWITCHER DROPDOWN
-// ──────────────────────────────────────────────
-
-/** Football-only mode: render a single locked topic option when present. */
-function renderTopicSelect(currentKey) {
-  if (!dom.topicSelect) return;
-
-  dom.topicSelect.innerHTML = "";
-  const opt = document.createElement("option");
-  opt.value = "Football";
-  opt.textContent = "⚽ Football";
-  opt.selected = currentKey === "Football";
-  dom.topicSelect.appendChild(opt);
-  dom.topicSelect.disabled = true;
-}
-
-// ──────────────────────────────────────────────
 // EXPORT — public surface consumed by engine.js / main.js
 // ──────────────────────────────────────────────
 
@@ -542,7 +593,6 @@ const ui = {
 
   // Topic
   applyTopicUI,
-  renderTopicSelect,
 
   // Stack
   renderStack,
@@ -555,6 +605,7 @@ const ui = {
   // Status
   updateStatusBar,
   updateLastFetched,
+  updateFetchReport,
   updateSeasonBadge,
   setRefreshEnabled,
 

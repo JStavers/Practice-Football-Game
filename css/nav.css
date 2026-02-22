@@ -22,6 +22,7 @@
   --nav-item-radius:  8px;
   --nav-transition:   0.25s ease;
   --safe-top:         env(safe-area-inset-top, 0px);
+  --focus-ring:       #7dd3fc;
 }
 
 /* Make body a flex container so sidebar + content sit side-by-side */
@@ -129,6 +130,13 @@ body {
 .nav-item:hover {
   background: rgba(56, 189, 248, 0.08);
   color: var(--nav-text-active);
+}
+
+.sidebar__brand:focus-visible,
+.nav-item:focus-visible,
+.nav-toggle:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 /* Active / current page highlight */
@@ -267,6 +275,6 @@ body.nav-open .nav-toggle__bar:nth-child(3) {
   /* Content is full width; add top padding so hamburger doesn't overlap */
   .page-content {
     margin-left: 0;
-    padding-top: calc(60px + var(--safe-top));
+    padding-top: calc(72px + var(--safe-top));
   }
 }

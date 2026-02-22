@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <!-- Viewport: no zoom tricks, full-width on mobile -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=5.0" />
-  <title>Quiz Engine</title>
+  <title>The Lineup: Football Edition</title>
 
   <!-- ===== PWA Manifest & Theme ===== -->
   <link rel="manifest" href="manifest.json" />
@@ -13,11 +13,11 @@
   <!-- iOS / Safari PWA support -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="Quiz Engine" />
+  <meta name="apple-mobile-web-app-title" content="The Lineup: Football Edition" />
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
   <!-- General PWA / Android -->
   <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="application-name" content="Quiz Engine" />
+  <meta name="application-name" content="The Lineup: Football Edition" />
   <!-- Prevent phone-number auto-detection on mobile -->
   <meta name="format-detection" content="telephone=no" />
   <!-- SEO / sharing -->
@@ -52,7 +52,7 @@
     <a class="sidebar__brand" href="index.html">
       <span class="sidebar__brand-icon">🎮</span>
       <span>
-        <span class="sidebar__brand-name">Quiz Engine</span><br />
+        <span class="sidebar__brand-name">The Lineup</span><br />
         <span class="sidebar__brand-tagline">Topic-based quiz system</span>
       </span>
     </a>
@@ -73,7 +73,7 @@
     <!-- PWA Controls in the sidebar footer -->
     <div class="sidebar__footer">
       <span id="pwa-version" class="sidebar__version">v2.0.0</span>
-      Quiz Engine &nbsp;&middot;&nbsp; Vanilla JS
+      The Lineup &nbsp;&middot;&nbsp; Vanilla JS
 
       <!-- Install App button — hidden until browser fires beforeinstallprompt -->
       <button id="pwa-install-btn" class="pwa-install-btn hidden" type="button">
@@ -98,6 +98,7 @@
 
   <!-- Everything below is the actual page content -->
   <div class="page-content">
+  <main id="main-content">
   <!-- ===== Loading Overlay (shown while fetching API data) ===== -->
   <div class="loading-overlay" id="loading-overlay">
     <div class="loading-overlay__content">
@@ -118,7 +119,7 @@
     </header>
 
     <!-- ===== Data-Source Status ===== -->
-    <div class="data-status" id="data-status">
+    <div class="data-status" id="data-status" aria-live="polite">
       <span id="status-text">Offline data</span>
       <span class="data-status__sep">·</span>
       <span id="player-count">0</span> players
@@ -131,9 +132,10 @@
     <div class="data-status__fetch-row" id="data-fetch-row">
       <span id="api-last-fetch"></span>
     </div>
+    <div class="api-fetch-report hidden" id="api-fetch-report" aria-live="polite"></div>
     <!-- ===== Stacked Round Board ===== -->
     <section class="round-stack" id="round-stack">
-      <!-- Rows are rendered dynamically by script.js -->
+      <!-- Rows are rendered dynamically by engine.js -->
     </section>
 
     <!-- ===== Dev Mode: Valid Answers (hidden unless DEV_MODE = true) ===== -->
@@ -156,6 +158,7 @@
           class="answer-form__input"
           placeholder="Type a player's name…"
           autocomplete="off"
+          aria-label="Player name"
           required
         />
         <!-- Autocomplete suggestions dropdown -->
@@ -167,7 +170,7 @@
     </form>
 
     <!-- ===== Feedback Area ===== -->
-    <div class="feedback" id="feedback"></div>
+    <div class="feedback" id="feedback" role="status" aria-live="polite" aria-atomic="true"></div>
 
     <!-- ===== Used Answers (duplicate tracker) ===== -->
     <section class="used-answers" id="used-answers">
@@ -199,22 +202,23 @@
   </div>
 
   <!-- Load order matters: topics → api → engine → ui → main -->
-  <script src="js/topics.js?v=20260221d"></script>
-  <script src="js/api.js?v=20260221d"></script>
+  <script src="js/topics.js?v=20260222a"></script>
+  <script src="js/api.js?v=20260222a"></script>
   <!-- Mapping + storage utilities (must load before engine.js) -->
-  <script src="js/mappingEngine.js?v=20260221d"></script>
-  <script src="js/topicStorage.js?v=20260221d"></script>
-  <script src="js/engine.js?v=20260221d"></script>
-  <script src="js/ui.js?v=20260221d"></script>
-  <script src="js/main.js?v=20260221d"></script>
+  <script src="js/mappingEngine.js?v=20260222a"></script>
+  <script src="js/topicStorage.js?v=20260222a"></script>
+  <script src="js/engine.js?v=20260222a"></script>
+  <script src="js/ui.js?v=20260222a"></script>
+  <script src="js/main.js?v=20260222a"></script>
 
   <!-- Shared sidebar toggle — load last so all DOM is ready -->
-  <script src="js/nav.js?v=20260221d"></script>
+  <script src="js/nav.js?v=20260222a"></script>
 
   <!-- PWA utilities: service worker registration, install prompt,
        cache-clear, update banner.  Must load after all other scripts. -->
-  <script src="js/pwa.js?v=20260221d"></script>
+  <script src="js/pwa.js?v=20260222a"></script>
 
+  </main>
   </div><!-- /.page-content -->
 </body>
 </html>

@@ -18,7 +18,7 @@ async function setTopicAndRestart() {
   ui.hideGameOver();
   ui.showLoading(true, "Loading…");
 
-  // setTopic merges the builder-saved override (including apiConfig.apiKey)
+  // setTopic merges builder-saved settings and resolves runtime API key from session.
   await setTopic(SINGLE_TOPIC_KEY);
 
   ui.showLoading(false);
@@ -29,9 +29,9 @@ async function setTopicAndRestart() {
   const ts = getTopicCacheTimestamp(state.topic.topicKey);
   ui.updateLastFetched(state.isLiveData ? ts : null);
 
-  // Show Refresh button only when the topic has a live API key configured
+  // Show Refresh button only when the topic has live API enabled and a runtime key.
   const ac = state.topic?.apiConfig;
-  ui.setRefreshEnabled(!!(ac?.enabled && ac?.apiKey));
+  ui.setRefreshEnabled(!!(ac?.enabled && hasRuntimeApiKey(state.topic.topicKey)));
 
   // Season badge — derive season from apiConfig, or legacy Football fallback
   const season = state.isLiveData
@@ -52,33 +52,37 @@ async function setTopicAndRestart() {
 /**
  * Triggered by the "🔄 Refresh" button.
  * Busts the cache for the current topic and re-fetches from the API.
- * The key comes from the topic's own apiConfig — no separate store needed.
+ * The key comes from runtime session storage (set in API Settings).
  */
 async function handleApiRefresh() {
   if (!state.topic) return;
 
   const ac = state.topic.apiConfig;
-  if (!ac?.enabled || !ac?.apiKey) return;
+  if (!ac?.enabled || !hasRuntimeApiKey(state.topic.topicKey)) return;
 
   ui.setRefreshEnabled(false);
   ui.showLoading(true, "Refreshing data…");
+  try {
+    await refreshTopicData(state.topic.topicKey);
+    ui.updateStatusBar(state.items.length, state.isLiveData);
 
-  await refreshTopicData(state.topic.topicKey);
+    const ts = getTopicCacheTimestamp(state.topic.topicKey);
+    ui.updateLastFetched(state.isLiveData ? ts : null);
 
-  ui.showLoading(false);
-  ui.updateStatusBar(state.items.length, state.isLiveData);
-
-  const ts = getTopicCacheTimestamp(state.topic.topicKey);
-  ui.updateLastFetched(state.isLiveData ? ts : null);
-
-  // Refresh season badge after re-fetch
-  const refreshAc = state.topic?.apiConfig;
-  const refreshSeason = state.isLiveData
-    ? (refreshAc?.season || (state.topic.topicKey === "Football" ? (CONFIG.LEAGUES_TO_FETCH[0]?.season || null) : null))
-    : null;
-  ui.updateSeasonBadge(refreshSeason);
-
-  ui.setRefreshEnabled(true);
+    // Refresh season badge after re-fetch
+    const refreshAc = state.topic?.apiConfig;
+    const refreshSeason = state.isLiveData
+      ? (refreshAc?.season || (state.topic.topicKey === "Football" ? (CONFIG.LEAGUES_TO_FETCH[0]?.season || null) : null))
+      : null;
+    ui.updateSeasonBadge(refreshSeason);
+  } catch (err) {
+    console.error("[Main] API refresh failed:", err);
+    ui.showFeedback("Could not refresh live data. Please try again.", "incorrect");
+  } finally {
+    ui.showLoading(false);
+    const refreshAc = state.topic?.apiConfig;
+    ui.setRefreshEnabled(!!(refreshAc?.enabled && hasRuntimeApiKey(state.topic.topicKey)));
+  }
 }
 
 // ──────────────────────────────────────────────

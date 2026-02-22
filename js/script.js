@@ -14,7 +14,7 @@
  *  • Shows a hidden debug panel beneath the modifier cards.
  * Set to `false` before shipping / sharing.
  */
-const DEV_MODE = true;
+const DEV_MODE = false;
 
 // ──────────────────────────────────────────────
 // 1. CONFIGURATION

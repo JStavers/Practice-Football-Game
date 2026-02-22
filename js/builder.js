@@ -365,6 +365,10 @@ function updateApiConfig(field, value) {
     state.apiConfig.season = normalizeFootballSeason(value, getDefaultFootballSeason());
   } else if (field === "enabled") {
     state.apiConfig.enabled = Boolean(value);
+  } else if (field === "apiKey") {
+    state.apiConfig.apiKey = String(value || "");
+    const topicKey = state.meta.topicKey || "Football";
+    setSessionApiKey(topicKey, state.apiConfig.apiKey);
   } else {
     state.apiConfig[field] = value;
   }
@@ -383,6 +387,7 @@ let onStateChange = function () {};
 
 /** The localStorage key that holds the array of saved topics. */
 const LS_BUILDER_TOPICS = "quizBuilderTopics";
+const SESSION_API_KEY_PREFIX = "quizRuntimeApiKey_";
 
 /** The localStorage key that holds the set of deleted topic keys. */
 const LS_BUILDER_DELETED = "quizBuilderDeletedTopics";
@@ -440,6 +445,18 @@ function loadSavedTopics() {
     }
   } catch { /* ignore parse errors */ }
 
+  // Strip any previously persisted API keys from saved topics.
+  let sanitized = false;
+  saved = saved.map((topic) => {
+    if (topic?.apiConfig && Object.prototype.hasOwnProperty.call(topic.apiConfig, "apiKey")) {
+      const { apiKey, ...restApiConfig } = topic.apiConfig;
+      sanitized = true;
+      return { ...topic, apiConfig: restApiConfig };
+    }
+    return topic;
+  });
+  if (sanitized) saveTopicsToStorage(saved);
+
   // Merge: built-ins first, then overlay any user-saved versions
   const map = new Map();
   builtIns.forEach(t => map.set(t.topicKey, t));
@@ -459,6 +476,27 @@ function saveTopicsToStorage(topics) {
   } catch { /* quota exceeded — silently skip */ }
 }
 
+function getSessionApiKey(topicKey) {
+  if (!topicKey || typeof sessionStorage === "undefined") return "";
+  try {
+    return sessionStorage.getItem(SESSION_API_KEY_PREFIX + topicKey) || "";
+  } catch {
+    return "";
+  }
+}
+
+function setSessionApiKey(topicKey, apiKey) {
+  if (!topicKey || typeof sessionStorage === "undefined") return;
+  try {
+    const key = SESSION_API_KEY_PREFIX + topicKey;
+    if (apiKey && String(apiKey).trim()) {
+      sessionStorage.setItem(key, String(apiKey).trim());
+    } else {
+      sessionStorage.removeItem(key);
+    }
+  } catch { /* storage blocked */ }
+}
+
 /**
  * Upsert the current editor state into the saved topics list.
  * If a topic with the same topicKey already exists it is replaced;
@@ -476,7 +514,15 @@ function upsertTopic(topicObj) {
     const raw = localStorage.getItem(LS_BUILDER_TOPICS);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) saved = parsed;
+      if (Array.isArray(parsed)) {
+        saved = parsed.map((topic) => {
+          if (topic?.apiConfig && Object.prototype.hasOwnProperty.call(topic.apiConfig, "apiKey")) {
+            const { apiKey, ...restApiConfig } = topic.apiConfig;
+            return { ...topic, apiConfig: restApiConfig };
+          }
+          return topic;
+        });
+      }
     }
   } catch { /* ignore */ }
 
@@ -578,13 +624,13 @@ function loadTopicIntoEditor(topic) {
   if (ac2 && typeof ac2 === "object") {
     state.apiConfig.enabled  = Boolean(ac2.enabled);
     state.apiConfig.provider = ac2.provider || "API-Football";
-    state.apiConfig.apiKey   = ac2.apiKey   || "";
+    state.apiConfig.apiKey   = getSessionApiKey(topic.topicKey || "Football");
     state.apiConfig.leagues  = Array.isArray(ac2.leagues) ? [...ac2.leagues] : [];
     state.apiConfig.season   = normalizeFootballSeason(ac2.season, getDefaultFootballSeason());
   } else {
     state.apiConfig.enabled  = false;
     state.apiConfig.provider = "API-Football";
-    state.apiConfig.apiKey   = "";
+    state.apiConfig.apiKey   = getSessionApiKey(topic.topicKey || "Football");
     state.apiConfig.leagues  = [];
     state.apiConfig.season   = getDefaultFootballSeason();
   }

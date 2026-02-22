@@ -14,7 +14,7 @@
 "use strict";
 
 /* ── Version — bump this string to invalidate the old cache ── */
-const CACHE_VERSION = "v7";
+const CACHE_VERSION = "v9";
 const CACHE_NAME    = `quiz-engine-${CACHE_VERSION}`;
 
 /* ── App Shell: files to pre-cache on install ─────────────── */
@@ -168,7 +168,8 @@ async function networkFirstWithCacheFallback(request) {
  * Cache-first strategy: serve from cache, then network.
  * Used for the app shell (HTML/CSS/JS/icons).
  */
-async function cacheFirstWithNetworkFallback(request) {  const cached = await caches.match(request);
+async function cacheFirstWithNetworkFallback(request) {
+  const cached = await caches.match(request);
   if (cached) return cached;
 
   try {

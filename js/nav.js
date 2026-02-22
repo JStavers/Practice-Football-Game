@@ -10,18 +10,30 @@
   /* ── Hamburger toggle ──────────────────────────────────────── */
   const toggle  = document.getElementById("nav-toggle");
   const overlay = document.getElementById("nav-overlay");
+  const sidebar = document.querySelector(".sidebar");
+
+  function setNavOpen(open) {
+    document.body.classList.toggle("nav-open", open);
+    if (toggle) toggle.setAttribute("aria-expanded", open ? "true" : "false");
+    if (overlay) overlay.setAttribute("aria-hidden", open ? "false" : "true");
+  }
 
   /**
    * Opens or closes the mobile sidebar by toggling .nav-open on
-   * the <body>.  Traps focus inside the sidebar while it's open.
+   * the <body> and syncing ARIA state.
    */
   function toggleNav() {
-    document.body.classList.toggle("nav-open");
+    const isOpen = document.body.classList.contains("nav-open");
+    setNavOpen(!isOpen);
+    if (!isOpen && sidebar) {
+      const firstLink = sidebar.querySelector(".nav-item, .sidebar__brand");
+      if (firstLink) firstLink.focus();
+    }
   }
 
   /** Closes the sidebar (used by overlay click and nav links). */
   function closeNav() {
-    document.body.classList.remove("nav-open");
+    setNavOpen(false);
   }
 
   if (toggle)  toggle.addEventListener("click", toggleNav);
@@ -34,7 +46,16 @@
 
   /* ── Keyboard: close sidebar with Escape ────────────────────── */
   document.addEventListener("keydown", e => {
-    if (e.key === "Escape") closeNav();
+    if (e.key === "Escape") {
+      closeNav();
+      if (toggle) toggle.focus();
+    }
+  });
+
+  window.addEventListener("resize", () => {
+    if (window.innerWidth > 700) {
+      closeNav();
+    }
   });
 
   /* ── Active-page highlighting ───────────────────────────────── */

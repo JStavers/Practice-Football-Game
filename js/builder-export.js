@@ -116,9 +116,6 @@ function buildTopicObject() {
     obj.apiConfig = {
       enabled:  true,
       provider: ac.provider || "API-Football",
-      // Only embed the key if the user typed one in — they can also
-      // supply it at runtime via the quiz UI.
-      ...(ac.apiKey ? { apiKey: ac.apiKey } : {}),
       leagues:  ac.leagues.length ? ac.leagues : [],
       season:   resolveFootballSeasonForExport(ac.season),
     };

@@ -49,6 +49,8 @@ const dom = {
   apiLeagueList:    document.getElementById("api-league-list"),
   apiLeaguesSelectAll: document.getElementById("api-leagues-select-all"),
   apiLeaguesClearAll:  document.getElementById("api-leagues-clear-all"),
+  apiLeaguesLoad:      document.getElementById("api-leagues-load"),
+  apiLeaguesSource:    document.getElementById("api-leagues-source"),
   apiLeaguesCount:     document.getElementById("api-leagues-count"),
   apiSaveStatus:       document.getElementById("api-save-status"),
   /* Editor actions */
@@ -74,9 +76,16 @@ const KNOWN_API_FOOTBALL_LEAGUES = [
   { id: 203, name: "Super Lig" },
   { id: 307, name: "Saudi Pro League" },
 ];
+let leagueCatalog = [...KNOWN_API_FOOTBALL_LEAGUES];
+let leagueCatalogSource = "Built-in list";
+
+function setLeagueCatalogSource(text) {
+  leagueCatalogSource = text || "Built-in list";
+  if (dom.apiLeaguesSource) dom.apiLeaguesSource.textContent = leagueCatalogSource;
+}
 
 function getLeagueOptions(selectedIds = []) {
-  const map = new Map(KNOWN_API_FOOTBALL_LEAGUES.map((league) => [league.id, league.name]));
+  const map = new Map(leagueCatalog.map((league) => [league.id, league.name]));
   selectedIds.forEach((id) => {
     if (!map.has(id)) map.set(id, `League ${id}`);
   });
@@ -109,12 +118,65 @@ function renderLeagueOptions(selectedIds = []) {
 }
 
 function getAllKnownLeagueIds() {
-  return KNOWN_API_FOOTBALL_LEAGUES.map((league) => league.id);
+  return leagueCatalog.map((league) => league.id);
 }
 
 function setSaveStatus(message) {
   if (!dom.apiSaveStatus) return;
   dom.apiSaveStatus.textContent = message;
+}
+
+async function loadLeaguesFromApi() {
+  const apiKey = String(state.apiConfig.apiKey || "").trim();
+  if (!apiKey) {
+    showToast("Enter API key first, then load leagues.", "error");
+    return;
+  }
+
+  const season = Number.parseInt(state.apiConfig.season, 10) || 2024;
+  if (dom.apiLeaguesLoad) dom.apiLeaguesLoad.disabled = true;
+  setLeagueCatalogSource("Loading...");
+
+  try {
+    const url = `https://v3.football.api-sports.io/leagues?season=${season}&type=league`;
+    const res = await fetch(url, {
+      headers: { "x-apisports-key": apiKey },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const json = await res.json();
+    const response = Array.isArray(json?.response) ? json.response : [];
+    const mapped = response
+      .map((item) => {
+        const id = Number(item?.league?.id);
+        const leagueName = String(item?.league?.name || "").trim();
+        const country = String(item?.country?.name || "").trim();
+        if (!Number.isInteger(id) || id <= 0 || !leagueName) return null;
+        return {
+          id,
+          name: country ? `${leagueName} (${country})` : leagueName,
+        };
+      })
+      .filter(Boolean);
+
+    if (mapped.length === 0) throw new Error("No leagues returned");
+
+    const dedup = new Map();
+    mapped.forEach((league) => {
+      if (!dedup.has(league.id)) dedup.set(league.id, league);
+    });
+    leagueCatalog = Array.from(dedup.values()).sort((a, b) => a.name.localeCompare(b.name));
+    setLeagueCatalogSource(`API list (${leagueCatalog.length})`);
+    renderLeagueOptions(state.apiConfig.leagues);
+    showToast(`Loaded ${leagueCatalog.length} leagues from API.`);
+  } catch (err) {
+    leagueCatalog = [...KNOWN_API_FOOTBALL_LEAGUES];
+    setLeagueCatalogSource("Built-in list (API load failed)");
+    renderLeagueOptions(state.apiConfig.leagues);
+    showToast(`Could not load leagues from API (${err.message}).`, "error");
+  } finally {
+    if (dom.apiLeaguesLoad) dom.apiLeaguesLoad.disabled = false;
+  }
 }
 
 /* ============================================================
@@ -886,6 +948,9 @@ function renderApiConfig() {
   if (document.activeElement !== dom.apiKey) {
     dom.apiKey.value = cfg.apiKey;
   }
+  if (dom.apiLeaguesSource) {
+    dom.apiLeaguesSource.textContent = leagueCatalogSource;
+  }
   renderLeagueOptions(cfg.leagues);
 }
 
@@ -930,6 +995,10 @@ if (dom.apiLeaguesClearAll) {
   dom.apiLeaguesClearAll.addEventListener("click", () => {
     updateApiConfig("leagues", []);
   });
+}
+
+if (dom.apiLeaguesLoad) {
+  dom.apiLeaguesLoad.addEventListener("click", loadLeaguesFromApi);
 }
 
 /* -- Initial render on page load ------------------------------ */

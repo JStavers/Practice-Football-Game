@@ -21,6 +21,7 @@
   --radius-sm:        8px;
   --shadow:           0 4px 24px rgba(0, 0, 0, 0.35);
   --transition:       0.2s ease;
+  --focus-ring:       #7dd3fc;
 }
 
 /* ---------- Reset ---------- */
@@ -38,6 +39,21 @@ body {
   /* Layout (flex-row, padding) is handled by nav.css */
 }
 
+/* Builder page-specific horizontal gutters (mobile safe-area aware). */
+.page-content {
+  padding-left: max(14px, env(safe-area-inset-left, 0px));
+  padding-right: max(14px, env(safe-area-inset-right, 0px));
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
 /* ---------- App Wrapper ---------- */
 .builder-app {
   width: 100%;
@@ -46,6 +62,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 24px;
+  padding: 0 8px calc(16px + env(safe-area-inset-bottom, 0px));
 }
 
 /* ---------- Page Header ---------- */
@@ -76,6 +93,11 @@ body {
 
 /* Wide screens: three columns (topic list | form | preview) */
 @media (min-width: 900px) {
+  .builder-app {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
   .builder-layout {
     flex-direction: row;
     align-items: flex-start;
@@ -739,6 +761,7 @@ body {
   transition: background var(--transition), color var(--transition),
               transform var(--transition), opacity var(--transition);
   white-space: nowrap;
+  min-height: 40px;
 }
 
 .btn:active {
@@ -1002,6 +1025,11 @@ body {
   color: var(--clr-text-muted);
 }
 
+.league-selector__source {
+  font-size: 0.76rem;
+  color: var(--clr-text-muted);
+}
+
 .league-option {
   display: flex;
   align-items: center;
@@ -1013,6 +1041,17 @@ body {
 
 .league-option__checkbox {
   accent-color: var(--clr-primary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 .league-option__text em {

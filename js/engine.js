@@ -13,8 +13,9 @@
  * Set to `true` for debug helpers (valid-answer panel + console logs).
  * Set to `false` before sharing or deploying.
  */
-const DEV_MODE = true;
+const DEV_MODE = false;
 const MAX_FOOTBALL_SEASON = 2024;
+const SESSION_API_KEY_PREFIX = "quizRuntimeApiKey_";
 
 /**
  * Return the API-Football season start year for "now".
@@ -136,6 +137,39 @@ function lsCacheSigKey(topicKey) {
  * @type {Map<string, string>}
  */
 const _apiKeys = new Map();
+
+function readSessionApiKey(topicKey) {
+  if (!topicKey || typeof sessionStorage === "undefined") return "";
+  try {
+    return sessionStorage.getItem(SESSION_API_KEY_PREFIX + topicKey) || "";
+  } catch {
+    return "";
+  }
+}
+
+function hasRuntimeApiKey(topicKey) {
+  return !!(_apiKeys.get(topicKey) || readSessionApiKey(topicKey));
+}
+
+function setRuntimeApiKey(topicKey, apiKey) {
+  if (!topicKey) return;
+  if (apiKey && String(apiKey).trim()) {
+    const value = String(apiKey).trim();
+    _apiKeys.set(topicKey, value);
+    try {
+      if (typeof sessionStorage !== "undefined") {
+        sessionStorage.setItem(SESSION_API_KEY_PREFIX + topicKey, value);
+      }
+    } catch { /* storage blocked */ }
+  } else {
+    _apiKeys.delete(topicKey);
+    try {
+      if (typeof sessionStorage !== "undefined") {
+        sessionStorage.removeItem(SESSION_API_KEY_PREFIX + topicKey);
+      }
+    } catch { /* storage blocked */ }
+  }
+}
 
 /**
  * Base depth bonus multipliers by row position.
@@ -299,6 +333,12 @@ function lsRemove(key) {
   try { localStorage.removeItem(key); } catch { /* blocked */ }
 }
 
+function clearApiFetchReport() {
+  if (typeof ui !== "undefined" && typeof ui.updateFetchReport === "function") {
+    ui.updateFetchReport(null);
+  }
+}
+
 // ──────────────────────────────────────────────
 // TOPIC MANAGEMENT
 // ──────────────────────────────────────────────
@@ -351,6 +391,11 @@ async function setTopic(topicKey, apiKeyOverride = null) {
           converted.data = topic.data;
         }
 
+        // Security hardening: never trust persisted apiKey in saved topic JSON.
+        if (converted.apiConfig && Object.prototype.hasOwnProperty.call(converted.apiConfig, "apiKey")) {
+          delete converted.apiConfig.apiKey;
+        }
+
         topic = converted;
       }
     }
@@ -377,9 +422,12 @@ async function setTopic(topicKey, apiKeyOverride = null) {
   state.answered     = false;
   state.usedNames    = new Set();
 
-  // Resolve the API key (runtime override beats embedded key)
+  // Resolve the API key (runtime override beats session key)
   if (apiKeyOverride) {
-    _apiKeys.set(topicKey, apiKeyOverride);
+    setRuntimeApiKey(topicKey, apiKeyOverride);
+  } else {
+    const sessionKey = readSessionApiKey(topicKey);
+    if (sessionKey) _apiKeys.set(topicKey, sessionKey);
   }
 
   // Load items — async when apiConfig.enabled, sync otherwise
@@ -1214,9 +1262,15 @@ function buildCacheSig(ac) {
 }
 
 function cacheTopicItems(topicKey, items, ac) {
-  lsSet(lsCacheKey(topicKey),   JSON.stringify(items));
-  lsSet(lsCacheTsKey(topicKey), Date.now().toString());
-  lsSet(lsCacheSigKey(topicKey), buildCacheSig(ac));
+  const okItems = lsSet(lsCacheKey(topicKey), JSON.stringify(items));
+  const okTs = lsSet(lsCacheTsKey(topicKey), Date.now().toString());
+  const okSig = lsSet(lsCacheSigKey(topicKey), buildCacheSig(ac));
+  if (!okItems || !okTs || !okSig) {
+    console.warn(`[Engine] Cache write failed for topic "${topicKey}" (likely storage quota).`);
+    if (typeof ui !== "undefined" && typeof ui.showFeedback === "function") {
+      ui.showFeedback("⚠ Could not save cache on this device.", "incorrect");
+    }
+  }
 }
 
 /**
@@ -1337,6 +1391,8 @@ async function initTopicData(topic) {
   const ac       = topic.apiConfig     || null;
   const cac      = topic.customApiConfig || null;
 
+  clearApiFetchReport();
+
   // Whether API-Football live fetch is enabled
   const shouldFetchFootball = ac?.enabled === true || _apiKeys.has(topicKey);
   // Whether the generic custom-API fetch is enabled
@@ -1407,7 +1463,7 @@ async function initTopicData(topic) {
   const hasCacheAfterBust = !shouldFetchCustom && !!loadCachedTopicItems(topicKey);
   if (!hasCacheAfterBust && shouldFetchFootball && !shouldFetchCustom) {
     // Resolve the API key: runtime map first, then embedded in topic JSON
-    const apiKey = _apiKeys.get(topicKey) || ac?.apiKey || null;
+    const apiKey = _apiKeys.get(topicKey) || null;
 
     if (!apiKey) {
       console.warn(`[Engine] API fetch enabled for "${topicKey}" but no API key found — using fallback.`);
@@ -1541,6 +1597,13 @@ async function fetchTopicViaApiFootball(topic, ac, apiKey) {
       seen.add(p.searchName);
       return true;
     });
+    if (typeof ui !== "undefined" && typeof ui.updateFetchReport === "function") {
+      ui.updateFetchReport(leagueSummary, {
+        raw: all.length,
+        unique: unique.length,
+        leagues: leagues.length,
+      });
+    }
     console.info("[Engine] API-Football league summary:", leagueSummary);
     console.info(`[Engine] API-Football totals: raw=${all.length}, unique=${unique.length}, leagues=${leagues.length}`);
     return unique;

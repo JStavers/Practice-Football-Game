@@ -30,7 +30,7 @@
     <a class="sidebar__brand" href="index.html">
       <span class="sidebar__brand-icon">🎮</span>
       <span>
-        <span class="sidebar__brand-name">Quiz Engine</span><br />
+        <span class="sidebar__brand-name">The Lineup</span><br />
         <span class="sidebar__brand-tagline">Topic-based quiz system</span>
       </span>
     </a>
@@ -50,13 +50,14 @@
     </div>
 
     <div class="sidebar__footer">
-      Quiz Engine v2<br />Vanilla JS · No frameworks
+      The Lineup v2<br />Vanilla JS · No frameworks
     </div>
 
   </nav>
 
   <!-- Everything below is the actual page content -->
   <div class="page-content">
+  <main id="main-content">
 
   <div class="builder-app">
 
@@ -267,6 +268,8 @@
                 <div class="league-selector__actions">
                   <button id="api-leagues-select-all" class="btn btn--secondary btn--sm" type="button">Select all</button>
                   <button id="api-leagues-clear-all" class="btn btn--ghost btn--sm" type="button">Clear</button>
+                  <button id="api-leagues-load" class="btn btn--ghost btn--sm" type="button">Load from API</button>
+                  <span id="api-leagues-source" class="league-selector__source" aria-live="polite">Built-in list</span>
                   <span id="api-leagues-count" class="league-selector__count" aria-live="polite">0 selected</span>
                 </div>
                 <div id="api-league-list" class="league-selector" role="group" aria-label="Select leagues"></div>
@@ -331,6 +334,7 @@
   <script src="js/builder-export.js"></script>
   <script src="js/nav.js"></script>
 
+  </main>
   </div><!-- /.page-content -->
 </body>
 </html>

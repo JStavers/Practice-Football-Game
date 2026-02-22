@@ -30,8 +30,8 @@ npm install
 2. In **Section 5 · Live API Fetch**:
    - Enable live data
    - Provider: `API-Football`
-   - Add your API key
-   - Add league IDs (example: `39,140,135,78,61,253`)
+   - Add your API key (session-only; not persisted to localStorage)
+   - Select leagues via checkboxes (or use **Select all**)
    - Set season (`2000` to `2024`)
 3. Click **Save Topic**
 4. Open the quiz and click **Refresh**
